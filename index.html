@@ -383,6 +383,34 @@
     }
 
     // 로그인 처리
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    showLoading();
+    google.script.run
+        .withSuccessHandler(result => {
+            console.log('로그인 결과:', result);
+            if (result && result.success) {
+                currentUser = result.user;
+                showSuccess('로그인 성공!');
+                // 페이지 새로고침으로 세션 확인 후 메인 화면 표시
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                hideLoading();
+                showError(result.message || '로그인에 실패했습니다.');
+            }
+        })
+        .withFailureHandler(error => {
+            console.error('로그인 오류:', error);
+            hideLoading();
+            showError('로그인 중 오류가 발생했습니다.');
+        })
+        .login(email, password);
+}
     function handleLogin(e) {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
@@ -481,24 +509,178 @@
     }
 
     // 초기 데이터 로드
-    function initializeApp() {
-        if (!currentUser) return;
-        
-        document.getElementById('user-info').textContent = `${currentUser.이름}님`;
-        
-        // 권한에 따라 버튼 활성화/비활성화
-        updateRoleButtons();
-        
-        // 팀 목록 설정
-        if (currentUser.소속팀목록 && currentUser.소속팀목록.length > 1) {
-            document.getElementById('team-selector').style.display = 'flex';
-            selectedTeamId = currentUser.소속팀목록[0];
-        }
-        
-        // 평가월 목록 로드
-        loadMonths();
-    }
+// index.html에서 수정해야 할 부분들
 
+// 1. initializeApp() 함수 전체를 다음으로 교체:
+function initializeApp() {// 로그인 화면 표시
+function showLoginScreen() {
+    // 메인 컨테이너를 로그인 화면으로 교체
+    const mainContainer = document.getElementById('main-container');
+    mainContainer.innerHTML = `
+        <div class="max-w-md mx-auto mt-20">
+            <div class="card p-8 rounded-lg">
+                <h2 class="text-2xl font-bold text-center mb-6">🚀 성과 평가 시스템</h2>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">이메일</label>
+                        <input type="email" id="login-email" class="w-full p-3 rounded-md input-field" 
+                               placeholder="email@company.com" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium mb-2">비밀번호</label>
+                        <input type="password" id="login-password" class="w-full p-3 rounded-md input-field" 
+                               placeholder="비밀번호" required>
+                    </div>
+                    <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg">
+                        로그인
+                    </button>
+                </form>
+                <div class="mt-4 text-center text-sm text-gray-400">
+                    기본 계정: admin@company.com / admin123
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 로그인 폼 이벤트 리스너 등록
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+}
+
+// 메인 화면 복원
+function showMainScreen() {
+    // 페이지를 새로고침하여 원래 HTML 구조로 복원
+    location.reload();
+}
+    showLoading();
+    
+    // 세션 확인
+    google.script.run
+        .withSuccessHandler(result => {
+            if (result && result.success) {
+                console.log('세션 확인 성공:', result.user);
+                currentUser = result.user;
+                hideLoading();
+                showMainScreen();
+                loadMonths();
+            } else {
+                console.log('세션 없음, 로그인 화면 표시');
+                hideLoading();
+                showLoginScreen();
+            }
+        })
+        .withFailureHandler(error => {
+            console.error('세션 확인 실패:', error);
+            hideLoading();
+            showLoginScreen();
+        })
+        .checkSession();
+}
+
+// 2. loadMonths() 함수에서 하드코딩된 사용자 제거:
+function loadMonths() {
+    // };
+    
+    // currentUser가 없으면 오류
+    if (!currentUser) {
+        showError('사용자 정보가 없습니다.');
+        showLoginScreen();
+        return;
+    }
+    
+    // 복수 팀 소속 처리 (이 부분은 그대로 유지)
+    if (currentUser.소속팀ID && currentUser.소속팀ID.includes(',')) {
+        currentUser.소속팀목록 = currentUser.소속팀ID.split(',').map(t => t.trim());
+    } else {
+        currentUser.소속팀목록 = currentUser.소속팀ID ? [currentUser.소속팀ID] : [];
+    }
+    
+    // 나머지 코드는 그대로...
+}
+}
+
+// 3. 로그인/로그아웃 화면 전환 함수 추가:
+function showLoginScreen() {
+    // 로그인 화면 생성 (기존 코드에 없음)
+    const mainContainer = document.getElementById('main-container');
+    mainContainer.innerHTML = `
+        <div class="max-w-md mx-auto mt-20">
+            <div class="card p-8 rounded-lg">
+                <h2 class="text-2xl font-bold text-center mb-6">🚀 성과 평가 시스템</h2>
+                <form id="login-form">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">이메일</label>
+                        <input type="email" id="login-email" class="w-full p-3 rounded-md input-field" placeholder="email@company.com" required>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium mb-2">비밀번호</label>
+                        <input type="password" id="login-password" class="w-full p-3 rounded-md input-field" placeholder="비밀번호" required>
+                    </div>
+                    <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg">로그인</button>
+                </form>
+                <div class="mt-4 text-center text-sm text-gray-400">
+                    기본 계정: admin@company.com / admin123
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 로그인 폼 이벤트 재등록
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+}
+
+function showMainScreen() {
+    // 메인 화면 복원 (원래 HTML 구조로)
+    location.reload(); // 간단하게 페이지 새로고침
+}
+
+// 4. handleLogin 함수 수정:
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    
+    showLoading();
+    google.script.run
+        .withSuccessHandler(result => {
+            console.log('로그인 결과:', result);
+            if (result && result.success) {
+                currentUser = result.user;
+                showSuccess('로그인 성공!');
+                showMainScreen(); // 페이지 새로고침으로 세션 확인
+            } else {
+                hideLoading();
+                showError(result.message || '로그인에 실패했습니다.');
+            }
+        })
+        .withFailureHandler(error => {
+            console.error('로그인 오류:', error);
+            hideLoading();
+            showError('로그인 중 오류가 발생했습니다.');
+        })
+        .login(email, password);
+}
+
+// 5. 로그아웃 함수 수정:
+function handleLogout() {
+    google.script.run
+        .withSuccessHandler(() => {
+            currentUser = null;
+            location.reload(); // 페이지 새로고침
+        })
+        .withFailureHandler(error => {
+            console.error('로그아웃 오류:', error);
+        })
+        .logout();
+}
+
+// 6. DOMContentLoaded 이벤트에서 로그아웃 버튼 이벤트 추가:
+// window.addEventListener('DOMContentLoaded', function() { ... } 안에 추가:
+document.querySelector('a[href="#"]').addEventListener('click', (e) => {
+    e.preventDefault();
+    if (confirm('로그아웃 하시겠습니까?')) {
+        handleLogout();
+    }
+});
     function loadMonths() {
         google.script.run
             .withSuccessHandler(months => {
