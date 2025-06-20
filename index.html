@@ -89,6 +89,18 @@
         .close:focus {
             color: #fff;
         }
+        /* 평가진행상태 스타일 */
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .status-미시작 { background-color: #374151; color: #9CA3AF; }
+        .status-1차진행중 { background-color: #1E40AF; color: #93BBFC; }
+        .status-2차대기 { background-color: #7C3AED; color: #DDD6FE; }
+        .status-3차대기 { background-color: #DB2777; color: #FBCFE8; }
+        .status-완료 { background-color: #059669; color: #A7F3D0; }
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
@@ -241,7 +253,12 @@
         teams: [],
         channels: [],
         evaluations: [],
-        users: []
+        users: [],
+        members: []  // 담당자 데이터 추가
+    };
+    let evaluationStatus = {
+        channelStatus: {},
+        teamStatus: {}
     };
 
     // DOM 요소 참조 변수들
@@ -381,9 +398,9 @@
         }
         
         // 이미 추가된 멤버인지 확인
-        const existingMember = memberList.querySelector(`tr[data-member-id="${memberData.사용자ID}"]`);
+        const existingMember = memberList.querySelector(`tr[data-member-id="${memberData.담당자ID}"]`);
         if (existingMember) {
-            console.log('이미 추가된 멤버입니다:', memberData.사용자ID);
+            console.log('이미 추가된 멤버입니다:', memberData.담당자ID);
             return;
         }
         
@@ -553,7 +570,7 @@
         });
     }
 
-    // 데이터 로드
+    // 데이터 로드 - 수정됨
     function loadData(role) {
         if (!currentUser || !currentMonth) {
             showError('사용자 정보나 평가월이 선택되지 않았습니다.');
@@ -573,24 +590,28 @@
         // 사용자계정이 있으면 사용, 없으면 사용자ID 사용
         const userIdentifier = currentUser.사용자계정 || currentUser.사용자ID;
         
+        // 데이터 로드
         google.script.run
             .withSuccessHandler(data => {
                 console.log('데이터 로드 성공:', data);
-                appData = data;
+                appData = data || { teams: [], channels: [], evaluations: [], users: [], members: [] };
                 
                 // 팀 선택 드롭다운 업데이트 (팀장이고 복수 팀 소속인 경우)
                 if (viewType === 'teamLead' && currentUser.소속팀목록 && currentUser.소속팀목록.length > 1) {
                     updateTeamSelector();
                 }
                 
-                renderView(viewType); // 영문 viewType 전달
-                hideLoading();
-                
-                // renderView 후에 뷰 표시
-                if (views[viewType]) {
-                    views[viewType].classList.remove('hidden');
-                    console.log(viewType + ' 뷰 표시됨');
-                }
+                // 평가 진행상태 로드
+                loadEvaluationStatus(() => {
+                    renderView(viewType); // 영문 viewType 전달
+                    hideLoading();
+                    
+                    // renderView 후에 뷰 표시
+                    if (views[viewType]) {
+                        views[viewType].classList.remove('hidden');
+                        console.log(viewType + ' 뷰 표시됨');
+                    }
+                });
             })
             .withFailureHandler(error => {
                 console.error('Failed to load data:', error);
@@ -598,6 +619,22 @@
                 hideLoading();
             })
             .getDataByRole(userIdentifier, role, currentMonth);
+    }
+
+    // 평가 진행상태 로드 - 새로 추가
+    function loadEvaluationStatus(callback) {
+        google.script.run
+            .withSuccessHandler(status => {
+                console.log('평가 진행상태:', status);
+                evaluationStatus = status || { channelStatus: {}, teamStatus: {} };
+                if (callback) callback();
+            })
+            .withFailureHandler(error => {
+                console.error('Failed to load evaluation status:', error);
+                evaluationStatus = { channelStatus: {}, teamStatus: {} };
+                if (callback) callback();
+            })
+            .getEvaluationStatus(currentMonth);
     }
 
     // 평가 데이터 저장
@@ -639,10 +676,10 @@
             .saveEvaluationBatch(evaluations);
     }
 
-    // 동적 HTML 생성 함수들
+    // 동적 HTML 생성 함수들 - 수정됨
     function createMemberRowHTML(member, channelId, viewType, evaluationData = {}) {
-        const memberName = typeof member === 'string' ? member : member['이름'];
-        const memberId = typeof member === 'string' ? member : member['사용자ID'];
+        const memberName = member['이름'];
+        const memberId = member['담당자ID'];
         
         let colspan = viewType === 'manager' ? 5 : (viewType === 'finalApprover' ? 6 : 4);
         let rowHTML = `<tr class="table-row" data-member-id="${memberId}" data-member-name="${memberName}" data-channel-id="${channelId}">
@@ -787,14 +824,20 @@
         let members = [];
         
         if (channelEvaluations.length > 0) {
-            // 평가 데이터가 있는 경우 평가된 사용자들 표시
+            // 평가 데이터가 있는 경우
             const memberIds = [...new Set(channelEvaluations.map(e => e['담당자ID']))];
-            members = memberIds.map(id => appData.users.find(u => u['사용자ID'] === id)).filter(Boolean);
-        } else if (viewType === 'teamLead') {
-            // 평가 데이터가 없고 팀장 화면인 경우 팀 멤버 표시 (선택적)
-            // 기본적으로는 빈 상태로 시작
-            members = [];
+            members = memberIds.map(id => {
+                const member = appData.members.find(m => m['담당자ID'] === id);
+                return member || { 담당자ID: id, 이름: channelEvaluations.find(e => e['담당자ID'] === id)['담당자이름'] || '알 수 없음' };
+            }).filter(Boolean);
+        } else {
+            // 평가 데이터가 없는 경우 채널에 속한 담당자 표시
+            members = appData.members.filter(m => m['소속채널ID'] === channelId);
         }
+        
+        // 평가 진행상태 표시
+        const channelStatus = evaluationStatus.channelStatus[channelId] || '미시작';
+        const statusBadge = `<span class="status-badge status-${channelStatus}">${channelStatus}</span>`;
         
         let tableHeader = '';
         if (viewType === 'teamLead') {
@@ -839,7 +882,7 @@
         }
 
         const membersHTML = members.map(member => {
-            const evalData = channelEvaluations.find(e => e['담당자ID'] === member['사용자ID']) || {};
+            const evalData = channelEvaluations.find(e => e['담당자ID'] === member['담당자ID']) || {};
             return createMemberRowHTML(member, channelId, viewType, evalData);
         }).join('');
         
@@ -859,6 +902,7 @@
                         <div class="flex items-center gap-2">
                             <button class="toggle-channel-comment p-1 rounded-full hover:bg-gray-700"><i data-lucide="plus-circle"></i></button>
                             <h3 class="text-xl font-bold">${channelName}</h3>
+                            ${statusBadge}
                         </div>
                         <div class="dropdown">
                             <button class="toggle-menu p-1 rounded-full hover:bg-gray-600"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
@@ -896,13 +940,20 @@
         const teamName = team['팀이름'];
         const teamChannels = appData.channels.filter(c => c['소속팀ID'] === teamId);
         
+        // 팀 진행상태 표시
+        const teamStatus = evaluationStatus.teamStatus[teamId] || '미시작';
+        const statusBadge = `<span class="status-badge status-${teamStatus}">${teamStatus}</span>`;
+        
         const channelsHTML = teamChannels.map(channel => createChannelHTML(channel, viewType)).join('');
         
         return `
             <div class="card rounded-lg shadow-md" data-team-id="${teamId}">
                 <div class="p-5 bg-gray-800 rounded-t-lg">
                     <div class="flex justify-between items-center">
-                        <h2 class="text-2xl font-bold">${teamName}</h2>
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-2xl font-bold">${teamName}</h2>
+                            ${statusBadge}
+                        </div>
                         <div class="dropdown">
                             <button class="toggle-menu p-1 rounded-full hover:bg-gray-600"><i data-lucide="more-vertical"></i></button>
                             <div class="dropdown-content">
@@ -1436,16 +1487,6 @@
             showError('저장할 데이터가 없습니다.');
         }
     }
-    
-    // 간단한 평가ID 생성 (EVAL-YYYYMM-001 형식)
-    function generateSimpleEvaluationId(evaluationMonth, counter) {
-        const monthMatch = evaluationMonth.match(/(\d{4})년\s*(\d{1,2})월/);
-        const yyyymm = monthMatch ? 
-            monthMatch[1] + monthMatch[2].padStart(2, '0') : 
-            new Date().getFullYear() + (new Date().getMonth() + 1).toString().padStart(2, '0');
-        
-        return `EVAL-${yyyymm}-${counter.toString().padStart(3, '0')}`;
-    }
 
     // 역할 전환
     function switchView(role) {
@@ -1589,21 +1630,15 @@
             document.getElementById('adminPerm3').checked = role === '최종관리자';
         });
         
-        // 담당자 추가 폼 제출
+        // 담당자 추가 폼 제출 - 수정됨
         document.getElementById('addMemberForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
-            // USER001 형식의 ID 생성
-            const timestamp = Date.now();
-            const randomNum = Math.floor(Math.random() * 1000);
-            const userId = `USER${timestamp}${randomNum}`.substring(0, 10);
-            
-            const userData = {
-                userId: userId,
+            const memberData = {
                 name: document.getElementById('newMemberName').value,
                 role: document.getElementById('newMemberRole').value,
                 teamId: pendingMemberData.teamId,
-                isAdmin: false // 담당자는 관리자가 아님
+                channelId: pendingMemberData.channelId
             };
             
             showLoading();
@@ -1616,18 +1651,20 @@
                         // 화면에 즉시 추가
                         const channelCard = document.querySelector(`[data-channel-id="${pendingMemberData.channelId}"]`);
                         if (channelCard) {
-                            const newUser = {
-                                사용자ID: result.userId || userData.userId,
-                                이름: userData.name,
-                                역할: userData.role,
-                                소속팀ID: userData.teamId
+                            const newMember = {
+                                담당자ID: result.memberId,
+                                이름: memberData.name,
+                                역할: memberData.role,
+                                소속팀ID: memberData.teamId,
+                                소속채널ID: memberData.channelId
                             };
                             
-                            // appData에도 추가
-                            appData.users.push(newUser);
+                            // appData.members에도 추가
+                            if (!appData.members) appData.members = [];
+                            appData.members.push(newMember);
                             
                             // 화면에 추가
-                            addMemberToChannel(channelCard, newUser, pendingMemberData.channelId);
+                            addMemberToChannel(channelCard, newMember, pendingMemberData.channelId);
                         }
                     } else {
                         showError(result.message);
@@ -1635,11 +1672,11 @@
                     hideLoading();
                 })
                 .withFailureHandler(error => {
-                    console.error('Failed to add user:', error);
+                    console.error('Failed to add member:', error);
                     showError('담당자 추가 중 오류가 발생했습니다.');
                     hideLoading();
                 })
-                .addUser(userData);
+                .addMember(memberData);  // addUser가 아닌 addMember 호출
         });
 
         // 시스템 관리자 추가 폼 제출
@@ -1655,7 +1692,6 @@
                 name: document.getElementById('adminName').value,
                 role: document.getElementById('adminRole').value,
                 teamId: selectedTeams.join(','), // 복수 팀은 쉼표로 구분
-                isAdmin: true, // 시스템 관리자
                 permissions: {
                     perm1: document.getElementById('adminPerm1').checked,
                     perm2: document.getElementById('adminPerm2').checked,
@@ -1688,46 +1724,6 @@
                 })
                 .addUser(adminData);
         });
-        
-        window.debugApp = function() {
-            console.log('=== 디버그 정보 ===');
-            console.log('로딩 화면:', document.getElementById('loading'));
-            console.log('로딩 화면 숨김 여부:', document.getElementById('loading').classList.contains('hidden'));
-            console.log('팀장 뷰:', document.getElementById('team-lead-view'));
-            console.log('팀장 뷰 숨김 여부:', document.getElementById('team-lead-view').classList.contains('hidden'));
-            console.log('팀장 뷰 내용 길이:', document.getElementById('team-lead-view').innerHTML.length);
-            console.log('currentUser:', currentUser);
-            console.log('currentRole:', currentRole);
-            console.log('appData:', appData);
-            console.log('views:', views);
-            
-            // 강제로 로딩 숨기고 뷰 표시
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('team-lead-view').classList.remove('hidden');
-            console.log('강제로 로딩을 숨기고 팀장 뷰를 표시했습니다.');
-        };
-        
-        window.forceRender = function() {
-            console.log('강제 렌더링 시작...');
-            hideLoading();
-            renderView('teamLead');
-        };
-        
-        // 디버그용 함수들
-        window.debugSave = function() {
-            console.log('디버그 저장 테스트');
-            collectAndSaveData(true);
-        };
-        
-        window.testMultiTeam = function() {
-            console.log('복수 팀 소속 테스트');
-            currentUser.소속팀ID = 'T01,T02,T03';
-            currentUser.소속팀목록 = ['T01', 'T02', 'T03'];
-            setupTeamSelector();
-            updateTeamSelector();
-        };
-        
-        console.log('디버그 함수를 사용할 수 있습니다: debugApp(), forceRender(), debugSave(), testMultiTeam()');
         
         // 초기화 시작
         initializeApp();
