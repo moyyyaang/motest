@@ -7,7 +7,8 @@ const SHEETS = {
   teams: '팀',
   channels: '채널',
   evaluations: '월별평가',
-  progress: '평가진행상태'
+  progress: '평가진행상태',
+  members: '담당자'  // 담당자 전용 시트 추가
 };
 
 // 스프레드시트 접근 헬퍼
@@ -91,6 +92,16 @@ function login(email, password) {
         user['소속팀목록'] = user['소속팀ID'] ? [user['소속팀ID']] : [];
       }
       
+      // 세션에 사용자 정보 저장
+      const userProperties = PropertiesService.getUserProperties();
+      userProperties.setProperty('currentUser', JSON.stringify({
+        사용자ID: user['사용자ID'],
+        이메일: user['이메일'],
+        이름: user['이름'],
+        평가권한: user['평가권한'],
+        소속팀목록: user['소속팀목록']
+      }));
+      
       return {
         success: true,
         user: user
@@ -108,6 +119,47 @@ function login(email, password) {
       message: '로그인 처리 중 오류가 발생했습니다.'
     };
   }
+}
+
+// 세션 확인
+function checkSession() {
+  try {
+    const userProperties = PropertiesService.getUserProperties();
+    const currentUserStr = userProperties.getProperty('currentUser');
+    
+    if (currentUserStr) {
+      const currentUser = JSON.parse(currentUserStr);
+      // 전체 사용자 정보 다시 로드
+      const users = getSheetData(SHEETS.users);
+      const user = users.find(u => u['사용자ID'] === currentUser.사용자ID);
+      
+      if (user && user['활성상태'] !== 'N') {
+        // 권한 정보 재설정
+        user['평가권한'] = currentUser.평가권한;
+        user['소속팀목록'] = currentUser.소속팀목록;
+        return {
+          success: true,
+          user: user
+        };
+      }
+    }
+    
+    return {
+      success: false
+    };
+  } catch (error) {
+    console.error('세션 확인 오류:', error);
+    return {
+      success: false
+    };
+  }
+}
+
+// 로그아웃
+function logout() {
+  const userProperties = PropertiesService.getUserProperties();
+  userProperties.deleteProperty('currentUser');
+  return { success: true };
 }
 
 // ============ API 함수들 ============
@@ -144,12 +196,14 @@ function getDataByRole(userId, role, evaluationMonth) {
       teams: [],
       channels: [],
       evaluations: [],
-      users: [],
+      users: [],      // 관리자들
+      members: [],    // 담당자들
       progress: []
     };
     
     // 데이터 로드
     const users = getSheetData(SHEETS.users);
+    const members = getSheetData(SHEETS.members);  // 담당자 데이터
     const teams = getSheetData(SHEETS.teams);
     const channels = getSheetData(SHEETS.channels);
     const evaluations = getSheetData(SHEETS.evaluations);
@@ -180,6 +234,10 @@ function getDataByRole(userId, role, evaluationMonth) {
           const uTeams = u['소속팀ID'] ? u['소속팀ID'].split(',').map(t => t.trim()) : [];
           return uTeams.some(t => userTeams.includes(t));
         });
+        result.members = members.filter(m => {
+          const mTeams = m['소속팀ID'] ? m['소속팀ID'].split(',').map(t => t.trim()) : [];
+          return mTeams.some(t => userTeams.includes(t));
+        });
         result.evaluations = monthEvaluations.filter(e => {
           const channelTeam = activeChannels.find(c => c['채널ID'] === e['채널ID'])?.['소속팀ID'];
           return userTeams.includes(channelTeam);
@@ -191,6 +249,7 @@ function getDataByRole(userId, role, evaluationMonth) {
       result.teams = activeTeams;
       result.channels = activeChannels;
       result.users = users;
+      result.members = members;
       result.evaluations = monthEvaluations;
       result.progress = monthProgress;
     }
@@ -541,7 +600,64 @@ function addTeam(teamData) {
   }
 }
 
-// 사용자 추가
+// 담당자 추가 (평가받는 사람)
+function addMember(memberData) {
+  try {
+    const spreadsheet = getSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(SHEETS.members);
+    
+    if (!sheet) {
+      throw new Error('담당자 시트를 찾을 수 없습니다.');
+    }
+    
+    // 헤더가 없으면 생성
+    if (sheet.getLastRow() === 0) {
+      const headers = ['담당자ID', '이름', '역할', '소속팀ID', '활성상태', '생성일시'];
+      sheet.appendRow(headers);
+    }
+    
+    // 담당자ID 생성 (MEM + 숫자)
+    const data = sheet.getDataRange().getValues();
+    let maxNum = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const memberId = data[i][0];
+      if (memberId && memberId.toString().startsWith('MEM')) {
+        const num = parseInt(memberId.toString().substring(3));
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    
+    const memberId = 'MEM' + String(maxNum + 1).padStart(3, '0');
+    
+    sheet.appendRow([
+      memberId,
+      memberData.name,
+      memberData.role,
+      memberData.teamId,
+      'Y',
+      new Date()
+    ]);
+    
+    return { 
+      success: true, 
+      memberId: memberId,
+      member: {
+        담당자ID: memberId,
+        이름: memberData.name,
+        역할: memberData.role,
+        소속팀ID: memberData.teamId
+      }
+    };
+  } catch (error) {
+    console.error('addMember 오류:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+
+// 사용자 추가 (관리자 - 로그인 가능한 사람만)
 function addUser(userData) {
   try {
     const spreadsheet = getSpreadsheet();
@@ -560,28 +676,8 @@ function addUser(userData) {
     
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
-    // 담당자와 시스템 관리자 구분
-    let userId;
-    if (userData.isAdmin) {
-      // 시스템 관리자는 이메일을 ID로 사용
-      userId = userData.userId;
-    } else {
-      // 담당자는 USER+숫자 형식
-      const data = sheet.getDataRange().getValues();
-      let maxNum = 0;
-      
-      for (let i = 1; i < data.length; i++) {
-        const uid = data[i][0];
-        if (uid && uid.toString().startsWith('USER')) {
-          const num = parseInt(uid.toString().substring(4));
-          if (!isNaN(num) && num > maxNum) {
-            maxNum = num;
-          }
-        }
-      }
-      
-      userId = 'USER' + String(maxNum + 1).padStart(3, '0');
-    }
+    // 시스템 관리자는 이메일을 ID로 사용
+    const userId = userData.userId;
     
     // 권한 설정
     const permissions = {
@@ -599,9 +695,9 @@ function addUser(userData) {
     const rowData = headers.map(header => {
       switch(header) {
         case '사용자ID': return userId;
-        case '이메일': return userData.isAdmin ? userData.userId : '';
+        case '이메일': return userId;
         case '이름': return userData.name;
-        case '비밀번호': return userData.password || '1234'; // 기본 비밀번호
+        case '비밀번호': return userData.password || '1234';
         case '역할': return userData.role;
         case '소속팀ID': return userData.teamId;
         case '1차평가권한': return permissions['1차평가권한'];
@@ -654,11 +750,62 @@ function testConnection() {
   }
 }
 
+// 세션 테스트
+function testSession() {
+  const userProperties = PropertiesService.getUserProperties();
+  const currentUser = userProperties.getProperty('currentUser');
+  
+  if (currentUser) {
+    console.log('현재 세션:', JSON.parse(currentUser));
+    return '세션이 활성화되어 있습니다.';
+  } else {
+    console.log('세션 없음');
+    return '세션이 없습니다.';
+  }
+}
+
+// 샘플 데이터 생성
+function createSampleData() {
+  const spreadsheet = getSpreadsheet();
+  
+  // 팀장 추가
+  const userSheet = spreadsheet.getSheetByName(SHEETS.users);
+  userSheet.appendRow([
+    'team1@company.com', 'team1@company.com', '이팀장', 'team123',
+    '팀장', 'T01', 'Y', 'N', 'N', 'Y', new Date()
+  ]);
+  
+  // 관리자 추가
+  userSheet.appendRow([
+    'manager@company.com', 'manager@company.com', '박관리', 'manager123',
+    '관리자', 'T01,T02', 'N', 'Y', 'N', 'Y', new Date()
+  ]);
+  
+  // 담당자 추가
+  const memberSheet = spreadsheet.getSheetByName(SHEETS.members);
+  memberSheet.appendRow(['MEM003', '김작가', '작가', 'T01', 'Y', new Date()]);
+  memberSheet.appendRow(['MEM004', '최편집', '편집자', 'T01', 'Y', new Date()]);
+  memberSheet.appendRow(['MEM005', '정PD', 'PD', 'T02', 'Y', new Date()]);
+  
+  // 채널 추가
+  const channelSheet = spreadsheet.getSheetByName(SHEETS.channels);
+  channelSheet.appendRow(['CH003', '교육채널', 'T02', 'Y']);
+  
+  return '샘플 데이터 생성 완료!';
+}
+
+// 모든 세션 초기화
+function clearAllSessions() {
+  const userProperties = PropertiesService.getUserProperties();
+  userProperties.deleteAllProperties();
+  return '모든 세션이 초기화되었습니다.';
+}
+
 // 초기 시트 설정 (처음 실행 시)
 function initSheets() {
   const spreadsheet = getSpreadsheet();
   
-  // 1. 사용자 시트
+  // 1. 사용자 시트 (관리자만)
   let sheet = spreadsheet.getSheetByName(SHEETS.users);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEETS.users);
@@ -670,7 +817,18 @@ function initSheets() {
                      '최종관리자', 'T01', 'Y', 'Y', 'Y', 'Y', new Date()]);
   }
   
-  // 2. 팀 시트
+  // 2. 담당자 시트 (평가받는 사람들)
+  sheet = spreadsheet.getSheetByName(SHEETS.members);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(SHEETS.members);
+    sheet.appendRow(['담당자ID', '이름', '역할', '소속팀ID', '활성상태', '생성일시']);
+    
+    // 샘플 데이터
+    sheet.appendRow(['MEM001', '박담당', 'PD', 'T01', 'Y', new Date()]);
+    sheet.appendRow(['MEM002', '이편집', '편집자', 'T01', 'Y', new Date()]);
+  }
+  
+  // 3. 팀 시트
   sheet = spreadsheet.getSheetByName(SHEETS.teams);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEETS.teams);
@@ -681,7 +839,7 @@ function initSheets() {
     sheet.appendRow(['T02', '콘텐츠2팀', 'team2@company.com', 'Y']);
   }
   
-  // 3. 채널 시트
+  // 4. 채널 시트
   sheet = spreadsheet.getSheetByName(SHEETS.channels);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEETS.channels);
@@ -692,7 +850,7 @@ function initSheets() {
     sheet.appendRow(['CH002', '서브채널', 'T01', 'Y']);
   }
   
-  // 4. 월별평가 시트
+  // 5. 월별평가 시트
   sheet = spreadsheet.getSheetByName(SHEETS.evaluations);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEETS.evaluations);
@@ -705,7 +863,7 @@ function initSheets() {
     ]);
   }
   
-  // 5. 평가진행상태 시트
+  // 6. 평가진행상태 시트
   sheet = spreadsheet.getSheetByName(SHEETS.progress);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEETS.progress);
