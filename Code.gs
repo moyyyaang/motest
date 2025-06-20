@@ -7,7 +7,7 @@ const SHEETS = {
   teams: '팀',
   channels: '채널',
   evaluations: '월별평가',
-  members: '담당자'  // 담당자 시트 추가
+  members: '담당자'
 };
 
 // 스프레드시트 접근 헬퍼
@@ -93,33 +93,34 @@ function getCurrentUser(email) {
   return user || null;
 }
 
-// 역할별 데이터 가져오기 - 수정됨
+// 역할별 데이터 가져오기
 function getDataByRole(userId, role, evaluationMonth) {
   console.log('getDataByRole 호출:', {userId, role, evaluationMonth});
   
   try {
-    const result = {
-      teams: [],
-      channels: [],
-      evaluations: [],
-      users: [],
-      members: []  // 담당자 추가
-    };
-    
     // 데이터 로드
     const users = getSheetData(SHEETS.users);
     const teams = getSheetData(SHEETS.teams);
     const channels = getSheetData(SHEETS.channels);
     const evaluations = getSheetData(SHEETS.evaluations);
-    const members = getSheetData(SHEETS.members);  // 담당자 데이터 로드
+    const members = getSheetData(SHEETS.members);
     
-    console.log('로드된 데이터:', {
+    console.log('로드된 원시 데이터:', {
       users: users.length,
       teams: teams.length,
       channels: channels.length,
       evaluations: evaluations.length,
       members: members.length
     });
+    
+    // 결과 객체 초기화
+    const result = {
+      teams: [],
+      channels: [],
+      evaluations: [],
+      users: [],
+      members: []
+    };
     
     // 평가월 필터링
     const monthEvaluations = evaluationMonth ? 
@@ -128,6 +129,8 @@ function getDataByRole(userId, role, evaluationMonth) {
     
     if (role === '팀장') {
       const currentUser = users.find(u => u['사용자ID'] === userId);
+      console.log('현재 사용자 찾기:', currentUser);
+      
       if (currentUser && currentUser['소속팀ID']) {
         const userTeams = currentUser['소속팀ID'].split(',').map(t => t.trim());
         console.log('팀장의 소속팀들:', userTeams);
@@ -138,7 +141,6 @@ function getDataByRole(userId, role, evaluationMonth) {
           const uTeams = u['소속팀ID'] ? u['소속팀ID'].split(',').map(t => t.trim()) : [];
           return uTeams.some(t => userTeams.includes(t));
         });
-        // 팀장은 자기 팀의 담당자만
         result.members = members.filter(m => userTeams.includes(m['소속팀ID']));
         result.evaluations = monthEvaluations.filter(e => {
           const channelTeam = channels.find(c => c['채널ID'] === e['채널ID'])?.['소속팀ID'];
@@ -150,7 +152,7 @@ function getDataByRole(userId, role, evaluationMonth) {
       result.teams = teams;
       result.channels = channels.filter(c => c['활성상태'] !== false);
       result.users = users;
-      result.members = members;  // 모든 담당자
+      result.members = members;
       result.evaluations = monthEvaluations;
     }
     
@@ -162,14 +164,75 @@ function getDataByRole(userId, role, evaluationMonth) {
       evaluations: result.evaluations.length
     });
     
+    // 중요: 결과 반환
     return result;
+    
   } catch (error) {
     console.error('getDataByRole 오류:', error);
-    throw new Error('데이터를 불러올 수 없습니다: ' + error.toString());
+    console.error('오류 상세:', error.stack);
+    
+    // 오류 발생시에도 빈 객체 반환
+    return {
+      teams: [],
+      channels: [],
+      evaluations: [],
+      users: [],
+      members: []
+    };
   }
 }
 
-// 담당자 추가 함수 - 새로 작성
+// addMember 함수 수정 (현재 시트 구조에 맞게)
+function addMember(memberData) {
+  try {
+    const spreadsheet = getSpreadsheet();
+    const sheet = spreadsheet.getSheetByName(SHEETS.members);
+    
+    if (!sheet) {
+      throw new Error('담당자 시트를 찾을 수 없습니다.');
+    }
+    
+    // 현재 시트의 실제 헤더
+    const headers = ['담당자ID', '이름', '역할', '소속팀ID', '활성상태', '생성일시'];
+    
+    // 헤더가 없으면 생성
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(headers);
+    }
+    
+    // 기존 담당자 ID들을 가져와서 최대값 찾기
+    const data = sheet.getDataRange().getValues();
+    let maxNum = 0;
+    
+    for (let i = 1; i < data.length; i++) {
+      const memberId = data[i][0];
+      if (memberId && memberId.toString().startsWith('MEM')) {  // MEM으로 시작
+        const num = parseInt(memberId.toString().substring(3));
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+    
+    const newId = 'MEM' + String(maxNum + 1).padStart(3, '0');
+    const now = new Date();
+    
+    sheet.appendRow([
+      newId, 
+      memberData.name, 
+      memberData.role, 
+      memberData.teamId,
+      'Y',  // 활성상태
+      now   // 생성일시
+    ]);
+    
+    return { success: true, memberId: newId };
+  } catch (error) {
+    console.error('addMember 오류:', error);
+    return { success: false, message: error.toString() };
+  }
+}
+// 담당자 추가 함수 - 새로 추가
 function addMember(memberData) {
   try {
     const spreadsheet = getSpreadsheet();
@@ -214,7 +277,6 @@ function addMember(memberData) {
     return { success: false, message: error.toString() };
   }
 }
-
 // 사용자 추가 함수 - 시스템 관리자만
 function addUser(userData) {
   try {
@@ -849,7 +911,54 @@ function getEvaluationMonths() {
     return [currentYearMonth];
   }
 }
-
+// 평가 진행 상태 조회 함수 - 새로 추가
+function getEvaluationStatus(evaluationMonth) {
+  try {
+    const evaluations = getSheetData(SHEETS.evaluations);
+    const channels = getSheetData(SHEETS.channels);
+    const teams = getSheetData(SHEETS.teams);
+    
+    const monthEvaluations = evaluations.filter(e => e['평가월'] === evaluationMonth);
+    
+    const statusByChannel = {};
+    const statusByTeam = {};
+    
+    // 채널별 진행상태 계산
+    channels.forEach(channel => {
+      const channelEvals = monthEvaluations.filter(e => e['채널ID'] === channel['채널ID']);
+      
+      if (channelEvals.length === 0) {
+        statusByChannel[channel['채널ID']] = '미시작';
+      } else {
+        const has1st = channelEvals.some(e => e['1차평가상태'] === '제출완료');
+        const has2nd = channelEvals.some(e => e['2차평가상태'] === '제출완료');
+        const has3rd = channelEvals.some(e => e['최종평가상태'] === '제출완료');
+        
+        if (has3rd) statusByChannel[channel['채널ID']] = '완료';
+        else if (has2nd) statusByChannel[channel['채널ID']] = '3차대기';
+        else if (has1st) statusByChannel[channel['채널ID']] = '2차대기';
+        else statusByChannel[channel['채널ID']] = '1차진행중';
+      }
+    });
+    
+    // 팀별 진행상태 계산
+    teams.forEach(team => {
+      const teamChannels = channels.filter(c => c['소속팀ID'] === team['팀ID']);
+      const statuses = teamChannels.map(c => statusByChannel[c['채널ID']] || '미시작');
+      
+      if (statuses.every(s => s === '완료')) statusByTeam[team['팀ID']] = '완료';
+      else if (statuses.some(s => s === '3차대기')) statusByTeam[team['팀ID']] = '3차대기';
+      else if (statuses.some(s => s === '2차대기')) statusByTeam[team['팀ID']] = '2차대기';
+      else if (statuses.some(s => s === '1차진행중')) statusByTeam[team['팀ID']] = '1차진행중';
+      else statusByTeam[team['팀ID']] = '미시작';
+    });
+    
+    return { channelStatus: statusByChannel, teamStatus: statusByTeam };
+  } catch (error) {
+    console.error('getEvaluationStatus 오류:', error);
+    return { channelStatus: {}, teamStatus: {} };
+  }
+}
 // 채널 추가
 function addChannel(channelData) {
   try {
@@ -1562,14 +1671,23 @@ function setupTestData() {
   
   return '테스트 데이터 생성 완료';
 }
-// 초기 데이터 설정 함수
+
+// 초기 데이터 설정 함수 - 담당자 시트 포함
 function initializeTestData() {
   try {
     const spreadsheet = getSpreadsheet();
     
+    // 0. 담당자 시트 생성
+    let memberSheet = spreadsheet.getSheetByName(SHEETS.members);
+    if (!memberSheet) {
+      spreadsheet.insertSheet(SHEETS.members);
+      memberSheet = spreadsheet.getSheetByName(SHEETS.members);
+      memberSheet.appendRow(['담당자ID', '이름', '역할', '소속팀ID', '소속채널ID']);
+    }
+    
     // 1. 팀 데이터 추가
     const teamSheet = spreadsheet.getSheetByName(SHEETS.teams);
-    if (teamSheet.getLastRow() <= 1) {
+    if (teamSheet && teamSheet.getLastRow() <= 1) {
       teamSheet.appendRow(['T01', '콘텐츠1팀', 'lead01@company.kr']);
       teamSheet.appendRow(['T02', '콘텐츠2팀', 'lead02@company.kr']);
       teamSheet.appendRow(['T03', '콘텐츠3팀', 'admin001@company.kr']);
@@ -1578,7 +1696,7 @@ function initializeTestData() {
     
     // 2. 채널 데이터 추가
     const channelSheet = spreadsheet.getSheetByName(SHEETS.channels);
-    if (channelSheet.getLastRow() <= 1) {
+    if (channelSheet && channelSheet.getLastRow() <= 1) {
       channelSheet.appendRow(['CH001', '메인 채널', 'T01', true]);
       channelSheet.appendRow(['CH002', '서브 채널', 'T01', true]);
       channelSheet.appendRow(['CH003', '뉴스 채널', 'T02', true]);
@@ -1587,19 +1705,23 @@ function initializeTestData() {
       console.log('채널 데이터 추가 완료');
     }
     
-    // 3. 사용자 데이터 추가
+    // 3. 사용자 데이터 추가 (시스템 관리자만)
     const userSheet = spreadsheet.getSheetByName(SHEETS.users);
-    if (userSheet.getLastRow() <= 1) {
-      // 시스템 관리자들
+    if (userSheet && userSheet.getLastRow() <= 1) {
       userSheet.appendRow(['admin001@company.kr', 'admin001@company.kr', '김관리자', '팀장', 'T03', 'Y', 'N', 'N']);
       userSheet.appendRow(['admin002@company.kr', 'admin002@company.kr', '이관리자', '관리자', 'T01,T02,T03', 'N', 'Y', 'N']);
       userSheet.appendRow(['admin003@company.kr', 'admin003@company.kr', '박관리자', '최종관리자', 'T01,T02,T03', 'N', 'N', 'Y']);
-      
-      // 일반 담당자들
-      userSheet.appendRow(['USER001', '', '홍길동', 'PD', 'T03', 'N', 'N', 'N']);
-      userSheet.appendRow(['USER002', '', '김영희', '편집자', 'T03', 'N', 'N', 'N']);
-      userSheet.appendRow(['USER003', '', '이철수', '작가', 'T01', 'N', 'N', 'N']);
       console.log('사용자 데이터 추가 완료');
+    }
+    
+    // 4. 담당자 데이터 추가
+    if (memberSheet && memberSheet.getLastRow() <= 1) {
+      memberSheet.appendRow(['M001', '홍길동', 'PD', 'T03', 'CH004']);
+      memberSheet.appendRow(['M002', '김영희', '편집자', 'T03', 'CH004']);
+      memberSheet.appendRow(['M003', '이철수', '작가', 'T01', 'CH001']);
+      memberSheet.appendRow(['M004', '박민수', '디자이너', 'T01', 'CH001']);
+      memberSheet.appendRow(['M005', '정수진', 'PD', 'T02', 'CH003']);
+      console.log('담당자 데이터 추가 완료');
     }
     
     return { success: true, message: '초기 데이터 설정 완료' };
@@ -1648,4 +1770,56 @@ function resetAllSheets() {
     console.error('시트 초기화 오류:', error);
     return { success: false, message: error.toString() };
   }
+}
+// 디버그 함수 - 맨 아래에 추가
+function debugGetDataByRole() {
+  console.log('=== 디버그 시작 ===');
+  
+  // 테스트 데이터
+  const testUserId = 'admin001@company.kr';
+  const testRole = '팀장';
+  const testMonth = '2025년 6월';
+  
+  try {
+    const result = getDataByRole(testUserId, testRole, testMonth);
+    console.log('getDataByRole 결과:', JSON.stringify(result));
+    console.log('teams 개수:', result.teams ? result.teams.length : 'null');
+    console.log('channels 개수:', result.channels ? result.channels.length : 'null');
+    
+    // 각 시트 데이터 직접 확인
+    console.log('\n=== 시트 데이터 직접 확인 ===');
+    console.log('팀 데이터:', getSheetData(SHEETS.teams));
+    console.log('채널 데이터:', getSheetData(SHEETS.channels));
+    console.log('사용자 데이터:', getSheetData(SHEETS.users));
+    console.log('담당자 데이터:', getSheetData(SHEETS.members));
+    
+  } catch (error) {
+    console.error('디버그 중 오류:', error);
+  }
+}
+
+// 시트 구조 확인 함수
+function checkSheetStructure() {
+  const spreadsheet = getSpreadsheet();
+  
+  Object.entries(SHEETS).forEach(([key, sheetName]) => {
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (sheet) {
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      console.log(`${sheetName} 시트 헤더:`, headers);
+    } else {
+      console.log(`${sheetName} 시트를 찾을 수 없습니다.`);
+    }
+  });
+}
+
+// 팀 관리자 확인 함수 추가
+function getTeamManagers(teamId) {
+  const users = getSheetData(SHEETS.users);
+  
+  // 해당 팀에 속하고 1차 평가 권한이 있는 모든 사용자
+  return users.filter(u => {
+    const userTeams = u['소속팀ID'] ? u['소속팀ID'].split(',').map(t => t.trim()) : [];
+    return userTeams.includes(teamId) && u['1차평가권한'] === 'Y';
+  });
 }
