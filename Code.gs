@@ -51,15 +51,40 @@ function getSheetData(sheetName) {
     
     const data = range.getValues();
     const headers = data[0];
-    const rows = data.slice(1);
     
-    return rows.map(row => {
-      const obj = {};
-      headers.forEach((header, index) => {
-        obj[header] = row[index];
-      });
-      return obj;
+    // 헤더가 비어있거나 유효하지 않은 경우 처리
+    const validHeaders = [];
+    headers.forEach((header, index) => {
+      if (header && header.toString().trim() !== '') {
+        validHeaders[index] = header.toString().trim();
+      }
     });
+    
+    if (Object.keys(validHeaders).length === 0) {
+      console.error(`${sheetName} 시트에 유효한 헤더가 없습니다.`);
+      return [];
+    }
+    
+    const rows = data.slice(1);
+    const result = [];
+    
+    rows.forEach((row, rowIndex) => {
+      // 첫 번째 컬럼이 비어있으면 빈 행으로 간주
+      if (!row[0] || row[0].toString().trim() === '') {
+        return;
+      }
+      
+      const obj = {};
+      validHeaders.forEach((header, index) => {
+        if (header) {
+          obj[header] = row[index] || '';
+        }
+      });
+      
+      result.push(obj);
+    });
+    
+    return result;
   } catch (error) {
     console.error(`getSheetData 오류 (${sheetName}):`, error);
     return [];
@@ -871,4 +896,138 @@ function initSheets() {
   }
   
   return '시트 초기화 완료!';
+}
+
+// Apps Script 편집기에서 실행할 시트 정리 함수
+
+function cleanupAndFixSheets() {
+  const spreadsheet = getSpreadsheet();
+  
+  // 1. 기존 사용자 시트 백업
+  const oldUserSheet = spreadsheet.getSheetByName('사용자');
+  if (oldUserSheet) {
+    oldUserSheet.setName('사용자_백업_' + new Date().getTime());
+  }
+  
+  // 2. 새 사용자 시트 생성
+  const userSheet = spreadsheet.insertSheet('사용자');
+  const userHeaders = ['사용자ID', '이메일', '이름', '비밀번호', '역할', '소속팀ID', 
+                       '1차평가권한', '2차평가권한', '3차평가권한', '활성상태', '생성일시'];
+  userSheet.appendRow(userHeaders);
+  
+  // 3. 관리자 계정 추가
+  userSheet.appendRow([
+    'admin@company.com',
+    'admin@company.com',
+    '어드민',
+    'admin123',
+    '최종관리자',
+    'T01,T02,T03,T04,T05,T06',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    new Date()
+  ]);
+  
+  // 팀장들 추가
+  userSheet.appendRow([
+    'team1@company.com',
+    'team1@company.com',
+    '1팀팀장',
+    'team123',
+    '팀장',
+    'T01',
+    'Y',
+    'N',
+    'N',
+    'Y',
+    new Date()
+  ]);
+  
+  userSheet.appendRow([
+    'manager@company.com',
+    'manager@company.com',
+    '박관리',
+    'manager123',
+    '관리자',
+    'T01,T02',
+    'N',
+    'Y',
+    'N',
+    'Y',
+    new Date()
+  ]);
+  
+  // 4. 담당자 시트 확인/생성
+  let memberSheet = spreadsheet.getSheetByName('담당자');
+  if (!memberSheet) {
+    memberSheet = spreadsheet.insertSheet('담당자');
+    const memberHeaders = ['담당자ID', '이름', '역할', '소속팀ID', '활성상태', '생성일시'];
+    memberSheet.appendRow(memberHeaders);
+  }
+  
+  // 5. 팀 시트 확인
+  let teamSheet = spreadsheet.getSheetByName('팀');
+  if (!teamSheet) {
+    teamSheet = spreadsheet.insertSheet('팀');
+    const teamHeaders = ['팀ID', '팀이름', '팀장ID', '활성상태'];
+    teamSheet.appendRow(teamHeaders);
+    
+    // 샘플 팀 데이터
+    teamSheet.appendRow(['T01', '팀원1', 'team1@company.com', 'Y']);
+    teamSheet.appendRow(['T02', '팀원2', 'team2@company.com', 'Y']);
+    teamSheet.appendRow(['T03', '팀원3', 'team3@company.com', 'Y']);
+    teamSheet.appendRow(['T04', '팀원4', 'team4@company.com', 'Y']);
+    teamSheet.appendRow(['T05', '팀원5', 'team5@company.com', 'Y']);
+    teamSheet.appendRow(['T06', '팀원6', 'team6@company.com', 'Y']);
+  }
+  
+  // 6. 채널 시트 확인
+  let channelSheet = spreadsheet.getSheetByName('채널');
+  if (!channelSheet) {
+    channelSheet = spreadsheet.insertSheet('채널');
+    const channelHeaders = ['채널ID', '채널이름', '소속팀ID', '활성상태'];
+    channelSheet.appendRow(channelHeaders);
+    
+    // 샘플 채널 데이터
+    channelSheet.appendRow(['CH001', '메인채널', 'T01', 'Y']);
+    channelSheet.appendRow(['CH002', '서브채널', 'T01', 'Y']);
+  }
+  
+  console.log('시트 정리 완료!');
+  return '시트가 정리되었습니다. 이제 로그인을 시도해보세요.';
+}
+
+// 기존 백업 시트에서 필요한 데이터 마이그레이션
+function migrateOldData() {
+  const spreadsheet = getSpreadsheet();
+  const backupSheets = spreadsheet.getSheets().filter(s => s.getName().includes('사용자_백업'));
+  
+  if (backupSheets.length === 0) {
+    return '백업 시트가 없습니다.';
+  }
+  
+  const oldSheet = backupSheets[0];
+  const oldData = oldSheet.getDataRange().getValues();
+  
+  const memberSheet = spreadsheet.getSheetByName('담당자');
+  
+  // 이전 데이터에서 담당자들 추출
+  for (let i = 1; i < oldData.length; i++) {
+    const row = oldData[i];
+    if (!row[0]) continue; // 빈 행 무시
+    
+    // 이메일이 없는 경우 담당자로 분류
+    if (!row[1] || row[1] === '') {
+      const memberId = 'MEM' + String(i).padStart(3, '0');
+      const name = row[2] || '이름없음';
+      const role = row[4] || 'PD';
+      const teamId = row[5] || 'T01';
+      
+      memberSheet.appendRow([memberId, name, role, teamId, 'Y', new Date()]);
+    }
+  }
+  
+  return '데이터 마이그레이션 완료!';
 }
