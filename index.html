@@ -89,64 +89,17 @@
         .close:focus {
             color: #fff;
         }
-        /* 로그인 화면 스타일 */
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-box {
-            background-color: #1F2937;
-            border: 1px solid #374151;
-            border-radius: 12px;
-            padding: 32px;
-            width: 100%;
-            max-width: 400px;
-        }
-        /* 진행상태 뱃지 */
-        .progress-badge {
-            font-size: 0.75rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        .progress-complete { background-color: #065f46; color: #a7f3d0; }
-        .progress-partial { background-color: #7c2d12; color: #fed7aa; }
-        .progress-none { background-color: #991b1b; color: #fecaca; }
     </style>
 </head>
 <body class="p-4 sm:p-6 lg:p-8">
-    <!-- 로그인 화면 -->
-    <div id="login-screen" class="login-container">
-        <div class="login-box">
-            <h1 class="text-2xl font-bold text-center mb-8">🚀 성과 평가 시스템</h1>
-            <form id="login-form">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">이메일</label>
-                    <input type="email" id="login-email" class="w-full p-3 rounded-md input-field" placeholder="email@company.com" required>
-                </div>
-                <div class="mb-6">
-                    <label class="block text-sm font-medium mb-2">비밀번호</label>
-                    <input type="password" id="login-password" class="w-full p-3 rounded-md input-field" placeholder="비밀번호 입력" required>
-                </div>
-                <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg">로그인</button>
-            </form>
-            <div class="mt-4 text-center text-sm text-gray-400">
-                기본 계정: admin@company.com / admin123
-            </div>
-        </div>
-    </div>
-
-    <!-- 메인 화면 -->
-    <div id="main-screen" class="max-w-7xl mx-auto hidden">
+    <div class="max-w-7xl mx-auto" id="main-container">
         <header class="mb-8">
             <div class="flex flex-wrap justify-between items-center gap-4">
                 <h1 class="text-3xl font-bold">🚀 성과 평가 시스템</h1>
                 <div class="flex items-center gap-3 p-2 rounded-lg card">
                     <span class="text-sm font-medium">역할 전환:</span>
                     <div class="flex gap-2">
-                        <button id="btn-team-lead" class="btn-secondary text-white font-bold py-2 px-3 rounded-lg text-sm">팀장</button>
+                        <button id="btn-team-lead" class="btn-primary text-white font-bold py-2 px-3 rounded-lg text-sm">팀장</button>
                         <button id="btn-manager" class="btn-secondary text-white font-bold py-2 px-3 rounded-lg text-sm">관리자</button>
                         <button id="btn-final-approver" class="btn-secondary text-white font-bold py-2 px-3 rounded-lg text-sm">최종관리자</button>
                     </div>
@@ -155,7 +108,7 @@
             <div class="mt-6 flex flex-wrap justify-between items-center gap-4">
                  <div class="flex items-center gap-3">
                      <span class="font-semibold text-lg" id="user-info"></span>
-                     <a href="#" id="logout-btn" class="text-sm text-gray-400 hover:text-indigo-400">로그아웃</a>
+                     <a href="#" class="text-sm text-gray-400 hover:text-indigo-400">로그아웃</a>
                  </div>
                  <div class="flex items-center gap-4">
                      <div class="flex items-center gap-2" id="team-selector" style="display: none;">
@@ -179,22 +132,13 @@
                 <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
                 <p class="mt-4 text-gray-400">데이터를 불러오는 중...</p>
             </div>
-            
-            <!-- 진행상태 대시보드 (최종관리자용) -->
-            <div id="progress-dashboard" class="mb-8 hidden">
-                <h2 class="text-xl font-semibold mb-4">평가 진행 현황</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="progress-cards">
-                    <!-- 진행상태 카드들이 여기에 렌더링됨 -->
-                </div>
-            </div>
-            
-            <div id="team-lead-view" class="hidden"></div>
+            <div id="team-lead-view"></div>
             <div id="manager-view" class="hidden"></div>
             <div id="final-approver-view" class="hidden"></div>
         </main>
     </div>
     
-    <footer id="action-footer" class="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-gray-700 hidden">
+    <footer id="action-footer" class="fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-gray-700">
         <div class="max-w-7xl mx-auto p-4 flex justify-end gap-3" id="footer-buttons">
             <!-- Buttons will be rendered here -->
         </div>
@@ -246,10 +190,6 @@
                     <input type="email" id="adminEmail" class="w-full p-2 rounded-md input-field" required>
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium mb-2">비밀번호</label>
-                    <input type="password" id="adminPassword" class="w-full p-2 rounded-md input-field" required>
-                </div>
-                <div class="mb-4">
                     <label class="block text-sm font-medium mb-2">소속팀</label>
                     <select id="adminTeam" class="w-full p-2 rounded-md input-field" multiple size="3">
                         <!-- 팀 목록이 동적으로 추가됨 -->
@@ -292,30 +232,37 @@
 
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
-    // 전역 상태 관리
+    // 전역 상태 관리 - 초기값만 설정
     let currentUser = null;
     let currentRole = null;
     let currentMonth = null;
-    let selectedTeamId = null;
+    let selectedTeamId = null; // 선택된 팀 ID (팀장일 때)
     let appData = {
         teams: [],
         channels: [],
         evaluations: [],
-        users: [],      // 관리자들
-        members: [],    // 담당자들
-        progress: []
+        users: []
     };
 
-    // DOM 요소 참조
+    // DOM 요소 참조 변수들
     let views = {};
     let buttons = {};
+    let userInfoEl = null;
+    let actionFooter = null;
+    let loadingEl = null;
+    let monthSelect = null;
+    let teamSelect = null;
+    let teamSelector = null;
     
     const formatCurrency = (num) => new Intl.NumberFormat('ko-KR').format(num);
     let undoState = { timer: null, element: null, parent: null, nextSibling: null };
+    
+    // 임시 변수 - 담당자 추가 시 사용
     let pendingMemberData = null;
 
-    // DOM 요소 초기화
+    // DOM 요소 초기화 함수
     function initializeDOMReferences() {
+        console.log('DOM 참조 초기화 시작');
         views = { 
             teamLead: document.getElementById('team-lead-view'), 
             manager: document.getElementById('manager-view'), 
@@ -326,23 +273,49 @@
             manager: document.getElementById('btn-manager'), 
             finalApprover: document.getElementById('btn-final-approver') 
         };
+        userInfoEl = document.getElementById('user-info');
+        actionFooter = document.getElementById('footer-buttons');
+        loadingEl = document.getElementById('loading');
+        monthSelect = document.getElementById('evaluation-month-select');
+        teamSelect = document.getElementById('team-select');
+        teamSelector = document.getElementById('team-selector');
+        
+        console.log('초기화된 views:', views);
+        console.log('각 view의 상태:', {
+            teamLead: views.teamLead ? 'OK' : 'NOT FOUND',
+            manager: views.manager ? 'OK' : 'NOT FOUND',
+            finalApprover: views.finalApprover ? 'OK' : 'NOT FOUND'
+        });
     }
 
     // Google Apps Script 통신 함수들
     function showLoading() {
         const loading = document.getElementById('loading');
-        if (loading) loading.classList.remove('hidden');
-        Object.values(views).forEach(view => {
+        if (loading) {
+            loading.classList.remove('hidden');
+        }
+        // 모든 뷰 숨기기
+        const allViews = ['team-lead-view', 'manager-view', 'final-approver-view'];
+        allViews.forEach(viewId => {
+            const view = document.getElementById(viewId);
             if (view) view.classList.add('hidden');
         });
     }
 
     function hideLoading() {
+        console.log('hideLoading 호출됨');
         const loading = document.getElementById('loading');
-        if (loading) loading.classList.add('hidden');
+        if (loading) {
+            loading.classList.add('hidden');
+            console.log('로딩 화면 숨김');
+        } else {
+            console.error('로딩 요소를 찾을 수 없음');
+        }
         
+        // 현재 활성 뷰 표시
         if (currentRole && views[currentRole]) {
             views[currentRole].classList.remove('hidden');
+            console.log(currentRole + ' 뷰 표시');
         }
     }
 
@@ -350,7 +323,7 @@
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
         errorDiv.textContent = '오류: ' + message;
-        document.getElementById('main-screen').prepend(errorDiv);
+        document.getElementById('main-container').prepend(errorDiv);
         setTimeout(() => errorDiv.remove(), 5000);
     }
 
@@ -358,103 +331,8 @@
         const successDiv = document.createElement('div');
         successDiv.className = 'success-message';
         successDiv.textContent = message;
-        document.getElementById('main-screen').prepend(successDiv);
+        document.getElementById('main-container').prepend(successDiv);
         setTimeout(() => successDiv.remove(), 3000);
-    }
-
-    // 세션 확인
-    function checkUserSession() {
-        google.script.run
-            .withSuccessHandler(result => {
-                if (result.success) {
-                    currentUser = result.user;
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('main-screen').classList.remove('hidden');
-                    document.getElementById('action-footer').classList.remove('hidden');
-                    initializeApp();
-                }
-                // 세션이 없으면 로그인 화면 유지
-            })
-            .withFailureHandler(error => {
-                console.log('세션 확인 실패:', error);
-                // 로그인 화면 유지
-            })
-            .checkSession();
-    }
-
-    // 로그인 처리
-function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    showLoading();
-    google.script.run
-        .withSuccessHandler(result => {
-            console.log('로그인 결과:', result);
-            if (result && result.success) {
-                currentUser = result.user;
-                showSuccess('로그인 성공!');
-                // 페이지 새로고침으로 세션 확인 후 메인 화면 표시
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } else {
-                hideLoading();
-                showError(result.message || '로그인에 실패했습니다.');
-            }
-        })
-        .withFailureHandler(error => {
-            console.error('로그인 오류:', error);
-            hideLoading();
-            showError('로그인 중 오류가 발생했습니다.');
-        })
-        .login(email, password);
-}
-    function handleLogin(e) {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-        
-        showLoading();
-        google.script.run
-            .withSuccessHandler(result => {
-                if (result.success) {
-                    currentUser = result.user;
-                    document.getElementById('login-screen').classList.add('hidden');
-                    document.getElementById('main-screen').classList.remove('hidden');
-                    document.getElementById('action-footer').classList.remove('hidden');
-                    initializeApp();
-                } else {
-                    hideLoading();
-                    alert(result.message);
-                }
-            })
-            .withFailureHandler(error => {
-                hideLoading();
-                alert('로그인 중 오류가 발생했습니다.');
-            })
-            .login(email, password);
-    }
-
-    // 로그아웃 처리
-    function handleLogout(e) {
-        e.preventDefault();
-        google.script.run
-            .withSuccessHandler(() => {
-                currentUser = null;
-                currentRole = null;
-                currentMonth = null;
-                selectedTeamId = null;
-                document.getElementById('login-screen').classList.remove('hidden');
-                document.getElementById('main-screen').classList.add('hidden');
-                document.getElementById('action-footer').classList.add('hidden');
-                document.getElementById('login-form').reset();
-            })
-            .withFailureHandler(error => {
-                console.error('로그아웃 오류:', error);
-            })
-            .logout();
     }
 
     // 모달 관련 함수
@@ -472,6 +350,7 @@ function handleLogin(e) {
 
     function openAddAdminModal() {
         document.getElementById('addAdminModal').style.display = 'block';
+        // 팀 목록 업데이트
         const teamSelect = document.getElementById('adminTeam');
         teamSelect.innerHTML = '';
         appData.teams.forEach(team => {
@@ -480,23 +359,38 @@ function handleLogin(e) {
             option.textContent = team['팀이름'];
             teamSelect.appendChild(option);
         });
-        document.getElementById('addAdminForm').reset();
+        // 폼 초기화
+        document.getElementById('adminName').value = '';
+        document.getElementById('adminEmail').value = '';
+        document.getElementById('adminRole').value = '';
+        document.getElementById('adminPerm1').checked = false;
+        document.getElementById('adminPerm2').checked = false;
+        document.getElementById('adminPerm3').checked = false;
     }
 
     function closeAddAdminModal() {
         document.getElementById('addAdminModal').style.display = 'none';
     }
 
-    // 담당자 추가
+    // 담당자 추가 함수 개선
     function addMemberToChannel(channelCard, memberData, channelId) {
         const memberList = channelCard.querySelector('.member-list');
-        if (!memberList) return;
+        if (!memberList) {
+            console.error('멤버 리스트를 찾을 수 없습니다.');
+            return;
+        }
         
-        const memberId = memberData['담당자ID'] || memberData['사용자ID'];
-        const existingMember = memberList.querySelector(`tr[data-member-id="${memberId}"]`);
-        if (existingMember) return;
+        // 이미 추가된 멤버인지 확인
+        const existingMember = memberList.querySelector(`tr[data-member-id="${memberData.사용자ID}"]`);
+        if (existingMember) {
+            console.log('이미 추가된 멤버입니다:', memberData.사용자ID);
+            return;
+        }
         
+        // 새 멤버 HTML 생성
         const newMemberHTML = createMemberRowHTML(memberData, channelId, currentRole, {});
+        
+        // tbody에 추가 (tfoot 바로 전에)
         const tbody = memberList.closest('tbody');
         if (tbody) {
             tbody.insertAdjacentHTML('beforeend', newMemberHTML);
@@ -504,199 +398,91 @@ function handleLogin(e) {
             memberList.insertAdjacentHTML('beforeend', newMemberHTML);
         }
         
+        // 계산 로직 재초기화
         initCalculations(channelCard);
+        
+        // Lucide 아이콘 재생성
         lucide.createIcons();
+        
+        console.log('멤버 추가 완료:', memberData.이름);
     }
 
     // 초기 데이터 로드
-// index.html에서 수정해야 할 부분들
-
-// 1. initializeApp() 함수 전체를 다음으로 교체:
-function initializeApp() {// 로그인 화면 표시
-function showLoginScreen() {
-    // 메인 컨테이너를 로그인 화면으로 교체
-    const mainContainer = document.getElementById('main-container');
-    mainContainer.innerHTML = `
-        <div class="max-w-md mx-auto mt-20">
-            <div class="card p-8 rounded-lg">
-                <h2 class="text-2xl font-bold text-center mb-6">🚀 성과 평가 시스템</h2>
-                <form id="login-form">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">이메일</label>
-                        <input type="email" id="login-email" class="w-full p-3 rounded-md input-field" 
-                               placeholder="email@company.com" required>
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium mb-2">비밀번호</label>
-                        <input type="password" id="login-password" class="w-full p-3 rounded-md input-field" 
-                               placeholder="비밀번호" required>
-                    </div>
-                    <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg">
-                        로그인
-                    </button>
-                </form>
-                <div class="mt-4 text-center text-sm text-gray-400">
-                    기본 계정: admin@company.com / admin123
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // 로그인 폼 이벤트 리스너 등록
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-}
-
-// 메인 화면 복원
-function showMainScreen() {
-    // 페이지를 새로고침하여 원래 HTML 구조로 복원
-    location.reload();
-}
-    showLoading();
-    
-    // 세션 확인
-    google.script.run
-        .withSuccessHandler(result => {
-            if (result && result.success) {
-                console.log('세션 확인 성공:', result.user);
-                currentUser = result.user;
+    function initializeApp() {
+        showLoading();
+        
+        // 먼저 연결 테스트
+        google.script.run
+            .withSuccessHandler(result => {
+                if (result.success) {
+                    console.log('연결 성공:', result);
+                    loadMonths();
+                } else {
+                    showError('스프레드시트 연결 실패: ' + result.error);
+                    hideLoading();
+                }
+            })
+            .withFailureHandler(error => {
+                console.error('Connection test failed:', error);
+                showError('서버 연결 실패: ' + error.message);
                 hideLoading();
-                showMainScreen();
-                loadMonths();
-            } else {
-                console.log('세션 없음, 로그인 화면 표시');
-                hideLoading();
-                showLoginScreen();
-            }
-        })
-        .withFailureHandler(error => {
-            console.error('세션 확인 실패:', error);
-            hideLoading();
-            showLoginScreen();
-        })
-        .checkSession();
-}
-
-// 2. loadMonths() 함수에서 하드코딩된 사용자 제거:
-function loadMonths() {
-    // };
-    
-    // currentUser가 없으면 오류
-    if (!currentUser) {
-        showError('사용자 정보가 없습니다.');
-        showLoginScreen();
-        return;
+            })
+            .testConnection();
     }
-    
-    // 복수 팀 소속 처리 (이 부분은 그대로 유지)
-    if (currentUser.소속팀ID && currentUser.소속팀ID.includes(',')) {
-        currentUser.소속팀목록 = currentUser.소속팀ID.split(',').map(t => t.trim());
-    } else {
-        currentUser.소속팀목록 = currentUser.소속팀ID ? [currentUser.소속팀ID] : [];
-    }
-    
-    // 나머지 코드는 그대로...
-}
-}
 
-// 3. 로그인/로그아웃 화면 전환 함수 추가:
-function showLoginScreen() {
-    // 로그인 화면 생성 (기존 코드에 없음)
-    const mainContainer = document.getElementById('main-container');
-    mainContainer.innerHTML = `
-        <div class="max-w-md mx-auto mt-20">
-            <div class="card p-8 rounded-lg">
-                <h2 class="text-2xl font-bold text-center mb-6">🚀 성과 평가 시스템</h2>
-                <form id="login-form">
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium mb-2">이메일</label>
-                        <input type="email" id="login-email" class="w-full p-3 rounded-md input-field" placeholder="email@company.com" required>
-                    </div>
-                    <div class="mb-6">
-                        <label class="block text-sm font-medium mb-2">비밀번호</label>
-                        <input type="password" id="login-password" class="w-full p-3 rounded-md input-field" placeholder="비밀번호" required>
-                    </div>
-                    <button type="submit" class="w-full btn-primary text-white font-bold py-3 rounded-lg">로그인</button>
-                </form>
-                <div class="mt-4 text-center text-sm text-gray-400">
-                    기본 계정: admin@company.com / admin123
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // 로그인 폼 이벤트 재등록
-    document.getElementById('login-form').addEventListener('submit', handleLogin);
-}
-
-function showMainScreen() {
-    // 메인 화면 복원 (원래 HTML 구조로)
-    location.reload(); // 간단하게 페이지 새로고침
-}
-
-// 4. handleLogin 함수 수정:
-function handleLogin(e) {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    
-    showLoading();
-    google.script.run
-        .withSuccessHandler(result => {
-            console.log('로그인 결과:', result);
-            if (result && result.success) {
-                currentUser = result.user;
-                showSuccess('로그인 성공!');
-                showMainScreen(); // 페이지 새로고침으로 세션 확인
-            } else {
-                hideLoading();
-                showError(result.message || '로그인에 실패했습니다.');
-            }
-        })
-        .withFailureHandler(error => {
-            console.error('로그인 오류:', error);
-            hideLoading();
-            showError('로그인 중 오류가 발생했습니다.');
-        })
-        .login(email, password);
-}
-
-// 5. 로그아웃 함수 수정:
-function handleLogout() {
-    google.script.run
-        .withSuccessHandler(() => {
-            currentUser = null;
-            location.reload(); // 페이지 새로고침
-        })
-        .withFailureHandler(error => {
-            console.error('로그아웃 오류:', error);
-        })
-        .logout();
-}
-
-// 6. DOMContentLoaded 이벤트에서 로그아웃 버튼 이벤트 추가:
-// window.addEventListener('DOMContentLoaded', function() { ... } 안에 추가:
-document.querySelector('a[href="#"]').addEventListener('click', (e) => {
-    e.preventDefault();
-    if (confirm('로그아웃 하시겠습니까?')) {
-        handleLogout();
-    }
-});
     function loadMonths() {
+        // 먼저 사용자 설정 (테스트용 - 실제로는 getCurrentUser API 호출)
+        currentUser = { 
+            사용자ID: 'admin001@company.kr', // 시스템 관리자는 이메일 사용
+            사용자계정: 'admin001@company.kr',
+            이름: '김관리자', 
+            역할: '팀장',
+            소속팀ID: 'T03', // 단일 팀 소속 예시. 복수 팀은 'T03,T01' 형식
+            평가권한: ['1차', '2차', '3차'] // 테스트용으로 모든 권한 부여
+        };
+        
+        // 복수 팀 소속 처리
+        if (currentUser.소속팀ID && currentUser.소속팀ID.includes(',')) {
+            currentUser.소속팀목록 = currentUser.소속팀ID.split(',').map(t => t.trim());
+        } else {
+            currentUser.소속팀목록 = currentUser.소속팀ID ? [currentUser.소속팀ID] : [];
+        }
+        
+        console.log('현재 사용자 정보:', currentUser);
+        
+        // 평가월 목록 로드
         google.script.run
             .withSuccessHandler(months => {
-                const monthSelect = document.getElementById('evaluation-month-select');
-                monthSelect.innerHTML = '<option value="">월 선택...</option>';
-                
-                months.forEach(month => {
-                    monthSelect.innerHTML += `<option value="${month}">${month}</option>`;
-                });
-                
-                if (months.length > 0) {
-                    currentMonth = months[0];
-                    monthSelect.value = currentMonth;
+                const monthSelectEl = document.getElementById('evaluation-month-select');
+                if (!monthSelectEl) {
+                    console.error('월 선택 요소를 찾을 수 없습니다.');
+                    return;
                 }
                 
-                // 기본 역할 선택
+                monthSelectEl.innerHTML = '<option value="">월 선택...</option>';
+                if (!months || months.length === 0) {
+                    // 새 월 추가
+                    const currentDate = new Date();
+                    const currentYearMonth = currentDate.getFullYear() + '년 ' + (currentDate.getMonth() + 1) + '월';
+                    monthSelectEl.innerHTML += `<option value="${currentYearMonth}">${currentYearMonth}</option>`;
+                    currentMonth = currentYearMonth;
+                } else {
+                    months.forEach(month => {
+                        monthSelectEl.innerHTML += `<option value="${month}">${month}</option>`;
+                    });
+                    currentMonth = months[0]; // 가장 최근 월 선택
+                }
+                monthSelectEl.value = currentMonth;
+                
+                // 권한에 따라 버튼 활성화/비활성화
+                updateRoleButtons();
+                
+                // 팀 목록 설정 (복수 팀 소속인 경우)
+                if (currentUser.소속팀목록 && currentUser.소속팀목록.length > 1) {
+                    setupTeamSelector();
+                }
+                
+                // 기본 역할 선택 (권한이 있는 첫 번째 역할)
                 if (currentUser.평가권한.includes('1차')) {
                     switchView('teamLead');
                 } else if (currentUser.평가권한.includes('2차')) {
@@ -705,36 +491,33 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     switchView('finalApprover');
                 } else {
                     showError('평가 권한이 없습니다.');
+                    hideLoading();
                 }
             })
             .withFailureHandler(error => {
-                showError('평가월 목록을 불러오는데 실패했습니다.');
+                console.error('Failed to load months:', error);
+                showError('평가월 목록을 불러오는데 실패했습니다: ' + error.message);
                 hideLoading();
             })
             .getEvaluationMonths();
     }
-
-    // 권한에 따른 역할 버튼 업데이트
-    function updateRoleButtons() {
-        if (!currentUser || !currentUser.평가권한) return;
+    
+    // 팀 선택 드롭다운 설정
+    function setupTeamSelector() {
+        if (!teamSelector || !teamSelect) return;
         
-        buttons.teamLead.disabled = !currentUser.평가권한.includes('1차');
-        buttons.manager.disabled = !currentUser.평가권한.includes('2차');
-        buttons.finalApprover.disabled = !currentUser.평가권한.includes('3차');
+        // 팀장 역할일 때만 팀 선택 표시
+        teamSelector.style.display = 'flex';
         
-        Object.entries(buttons).forEach(([role, btn]) => {
-            if (btn.disabled) {
-                btn.classList.add('opacity-50', 'cursor-not-allowed');
-            } else {
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-        });
+        // 첫 번째 팀을 기본 선택
+        selectedTeamId = currentUser.소속팀목록[0];
+        
+        // 실제 팀 정보 로드는 데이터 로드 후에 수행
     }
-
+    
     // 팀 선택 드롭다운 업데이트
     function updateTeamSelector() {
-        const teamSelect = document.getElementById('team-select');
-        if (!teamSelect || !currentUser.소속팀목록) return;
+        if (!teamSelect || !currentUser.소속팀목록 || currentUser.소속팀목록.length <= 1) return;
         
         teamSelect.innerHTML = '<option value="">팀 선택...</option>';
         
@@ -750,13 +533,36 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         
         teamSelect.value = selectedTeamId || currentUser.소속팀목록[0];
     }
+    
+    // 권한에 따른 역할 버튼 업데이트
+    function updateRoleButtons() {
+        if (!currentUser || !currentUser.평가권한) return;
+        
+        // 버튼 활성화/비활성화
+        buttons.teamLead.disabled = !currentUser.평가권한.includes('1차');
+        buttons.manager.disabled = !currentUser.평가권한.includes('2차');
+        buttons.finalApprover.disabled = !currentUser.평가권한.includes('3차');
+        
+        // 비활성화된 버튼 스타일
+        Object.entries(buttons).forEach(([role, btn]) => {
+            if (btn.disabled) {
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    }
 
     // 데이터 로드
     function loadData(role) {
-        if (!currentUser || !currentMonth) return;
+        if (!currentUser || !currentMonth) {
+            showError('사용자 정보나 평가월이 선택되지 않았습니다.');
+            return;
+        }
 
         showLoading();
         
+        // 한글 role을 영문으로 변환
         const roleToViewType = {
             '팀장': 'teamLead',
             '관리자': 'manager',
@@ -764,99 +570,48 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         };
         const viewType = roleToViewType[role] || currentRole;
         
+        // 사용자계정이 있으면 사용, 없으면 사용자ID 사용
+        const userIdentifier = currentUser.사용자계정 || currentUser.사용자ID;
+        
         google.script.run
             .withSuccessHandler(data => {
+                console.log('데이터 로드 성공:', data);
                 appData = data;
                 
+                // 팀 선택 드롭다운 업데이트 (팀장이고 복수 팀 소속인 경우)
                 if (viewType === 'teamLead' && currentUser.소속팀목록 && currentUser.소속팀목록.length > 1) {
                     updateTeamSelector();
                 }
                 
-                renderView(viewType);
+                renderView(viewType); // 영문 viewType 전달
                 hideLoading();
                 
-                // 진행상태 대시보드 표시 (최종관리자)
-                if (viewType === 'finalApprover') {
-                    renderProgressDashboard();
-                } else {
-                    document.getElementById('progress-dashboard').classList.add('hidden');
+                // renderView 후에 뷰 표시
+                if (views[viewType]) {
+                    views[viewType].classList.remove('hidden');
+                    console.log(viewType + ' 뷰 표시됨');
                 }
             })
             .withFailureHandler(error => {
-                showError('데이터를 불러오는데 실패했습니다.');
+                console.error('Failed to load data:', error);
+                showError('데이터를 불러오는데 실패했습니다: ' + error.message);
                 hideLoading();
             })
-            .getDataByRole(currentUser.사용자ID, role, currentMonth);
-    }
-
-    // 진행상태 대시보드 렌더링
-    function renderProgressDashboard() {
-        const dashboard = document.getElementById('progress-dashboard');
-        if (!dashboard) return;
-        
-        dashboard.classList.remove('hidden');
-        
-        const progressCards = document.getElementById('progress-cards');
-        progressCards.innerHTML = '';
-        
-        // 팀별로 진행상태 집계
-        appData.teams.forEach(team => {
-            const teamChannels = appData.channels.filter(c => c['소속팀ID'] === team['팀ID']);
-            const teamProgress = appData.progress.filter(p => p['팀ID'] === team['팀ID']);
-            
-            let total1 = 0, complete1 = 0;
-            let total2 = 0, complete2 = 0;
-            let total3 = 0, complete3 = 0;
-            
-            teamProgress.forEach(p => {
-                const [comp1, tot1] = p['1차진행상태'].split('/').map(n => parseInt(n) || 0);
-                const [comp2, tot2] = p['2차진행상태'].split('/').map(n => parseInt(n) || 0);
-                const [comp3, tot3] = p['3차진행상태'].split('/').map(n => parseInt(n) || 0);
-                
-                total1 += tot1; complete1 += comp1;
-                total2 += tot2; complete2 += comp2;
-                total3 += tot3; complete3 += comp3;
-            });
-            
-            const cardHTML = `
-                <div class="card p-4 rounded-lg">
-                    <h3 class="font-bold text-lg mb-3">${team['팀이름']}</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm">1차 평가</span>
-                            <span class="progress-badge ${complete1 === total1 ? 'progress-complete' : 'progress-partial'}">
-                                ${complete1}/${total1}
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm">2차 평가</span>
-                            <span class="progress-badge ${complete2 === total2 ? 'progress-complete' : 'progress-partial'}">
-                                ${complete2}/${total2}
-                            </span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-sm">3차 평가</span>
-                            <span class="progress-badge ${complete3 === total3 ? 'progress-complete' : 'progress-partial'}">
-                                ${complete3}/${total3}
-                            </span>
-                        </div>
-                    </div>
-                </div>`;
-            
-            progressCards.insertAdjacentHTML('beforeend', cardHTML);
-        });
+            .getDataByRole(userIdentifier, role, currentMonth);
     }
 
     // 평가 데이터 저장
     function saveEvaluationData(evaluations, isDraft = false) {
-        // 평가자 ID 추가
-        evaluations.forEach(eval => {
-            eval['평가자ID'] = currentUser.사용자ID;
+        console.log('saveEvaluationData 호출:', {
+            evaluations: evaluations,
+            isDraft: isDraft,
+            count: evaluations.length
         });
         
         showLoading();
         google.script.run
             .withSuccessHandler(result => {
+                console.log('저장 성공:', result);
                 if (result.success) {
                     const successMsg = isDraft ? 
                         '임시 저장되었습니다.' : 
@@ -864,6 +619,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                          currentRole === 'manager' ? '2차 평가가 저장되었습니다.' :
                          '최종 평가가 확정되었습니다.');
                     showSuccess(successMsg);
+                    // 데이터 리프레시
                     const roleMap = {
                         'teamLead': '팀장',
                         'manager': '관리자',
@@ -876,7 +632,8 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                 }
             })
             .withFailureHandler(error => {
-                showError('저장 중 오류가 발생했습니다.');
+                console.error('Failed to save:', error);
+                showError('저장 중 오류가 발생했습니다: ' + error.message);
                 hideLoading();
             })
             .saveEvaluationBatch(evaluations);
@@ -933,7 +690,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         let corePerformanceHTML = '';
         
         if (viewType === 'teamLead') {
-            const performances = (evaluationData['1차성과내용'] || '').split('||').filter(p => p);
+            const performances = (evaluationData['1차성과금'] || '').split('||').filter(p => p);
             corePerformanceHTML = `
                 <div>
                     <h4 class="font-bold mb-3 flex items-center gap-2">📊 개인별 핵심 성과</h4>
@@ -965,7 +722,8 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     </div>
                 </div>`;
         } else {
-            const performances = (evaluationData['1차성과내용'] || '').split('||').filter(p => p);
+            // 성과 내용을 보기 좋게 표시
+            const performances = (evaluationData['1차성과금'] || '').split('||').filter(p => p);
             let performanceText = '1차 평가 시 입력된 성과 내용이 여기에 표시됩니다.';
             if (performances.length > 0) {
                 performanceText = performances.map(p => {
@@ -1022,12 +780,20 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         const channelId = channel['채널ID'];
         const channelName = channel['채널이름'];
         
+        // 해당 채널의 평가 데이터 필터링
         const channelEvaluations = appData.evaluations.filter(e => e['채널ID'] === channelId);
         
+        // 채널의 멤버 목록 구성
         let members = [];
+        
         if (channelEvaluations.length > 0) {
+            // 평가 데이터가 있는 경우 평가된 사용자들 표시
             const memberIds = [...new Set(channelEvaluations.map(e => e['담당자ID']))];
             members = memberIds.map(id => appData.users.find(u => u['사용자ID'] === id)).filter(Boolean);
+        } else if (viewType === 'teamLead') {
+            // 평가 데이터가 없고 팀장 화면인 경우 팀 멤버 표시 (선택적)
+            // 기본적으로는 빈 상태로 시작
+            members = [];
         }
         
         let tableHeader = '';
@@ -1151,20 +917,49 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
     }
 
     function renderView(viewType) {
+        console.log('renderView 호출됨, viewType:', viewType);
+        
+        // 매개변수 검증
+        if (!viewType || (viewType !== 'teamLead' && viewType !== 'manager' && viewType !== 'finalApprover')) {
+            console.error('Invalid viewType:', viewType);
+            return;
+        }
+        
+        // views 객체 확인
+        if (!views || !views[viewType]) {
+            console.error('View not found:', viewType);
+            return;
+        }
+        
         const container = views[viewType];
-        if (!container) return;
+        if (!container) {
+            console.error('Container not found for viewType:', viewType);
+            return;
+        }
+        
+        console.log('Container 찾음:', container);
         
         let contentHTML = '';
         let footerHTML = '';
 
         if (viewType === 'teamLead') {
+            console.log('팀장 뷰 렌더링 시작');
+            console.log('currentUser:', currentUser);
+            console.log('selectedTeamId:', selectedTeamId);
+            console.log('appData.teams:', appData.teams);
+            
+            // 선택된 팀 또는 첫 번째 소속 팀
             const teamId = selectedTeamId || currentUser.소속팀ID.split(',')[0].trim();
             const userTeam = appData.teams.find(t => t['팀ID'] === teamId);
+            console.log('선택된 팀 찾기 결과:', userTeam);
             
             if (!userTeam) {
-                contentHTML = '<p class="error-message">소속 팀을 찾을 수 없습니다.</p>';
+                contentHTML = '<p class="error-message">소속 팀을 찾을 수 없습니다. (찾는 팀ID: ' + teamId + ')</p>';
+                console.error('팀을 찾을 수 없음. 팀 목록:', appData.teams);
             } else {
                 const teamChannels = appData.channels.filter(c => c['소속팀ID'] === userTeam['팀ID']);
+                console.log('팀 채널들:', teamChannels);
+                
                 const channelsHTML = teamChannels.map(channel => createChannelHTML(channel, 'teamLead')).join('');
                 contentHTML = `
                     <h2 class="text-2xl font-semibold mb-4">${userTeam['팀이름']} 성과 입력 (1차)</h2>
@@ -1178,7 +973,13 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     <button class="btn-secondary py-3 px-6 text-base rounded-lg save-draft-btn">임시 저장</button>
                     <button class="btn-primary py-3 px-6 text-base rounded-lg submit-evaluation-btn">1차 평가 최종 제출</button>`;
             }
+            
+            // 팀 선택 드롭다운 표시/숨김
+            if (teamSelector) {
+                teamSelector.style.display = currentUser.소속팀목록 && currentUser.소속팀목록.length > 1 ? 'flex' : 'none';
+            }
         } else {
+            console.log(viewType + ' 뷰 렌더링 시작');
             const teamCardsHTML = appData.teams.map(team => createTeamCardHTML(team, viewType)).join('');
             const title = viewType === 'manager' ? '전체 성과 취합 (2차)' : '최종 성과금 입력 (3차)';
             const buttons = viewType === 'finalApprover' ? 
@@ -1199,16 +1000,28 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     </button>` : ''}
                 </div>`;
             footerHTML = buttons;
+            
+            // 팀 선택 드롭다운 숨김
+            if (teamSelector) {
+                teamSelector.style.display = 'none';
+            }
         }
         
+        console.log('생성된 HTML 길이:', contentHTML.length);
         container.innerHTML = contentHTML;
-        document.getElementById('footer-buttons').innerHTML = footerHTML;
+        
+        // actionFooter 재확인
+        const footerElement = document.getElementById('footer-buttons');
+        if (footerElement) {
+            footerElement.innerHTML = footerHTML;
+        }
         
         initCalculations(container);
         lucide.createIcons();
+        console.log('renderView 완료');
     }
-
-    // Undo 기능
+    
+    // Undo Functionality
     function showUndoToast(message, elementToRemove) {
         clearTimeout(undoState.timer);
         const toast = document.getElementById('undo-toast');
@@ -1236,11 +1049,11 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         undoState = { timer: null, element: null, parent: null, nextSibling: null };
     }
 
-    // 이벤트 위임
-    document.getElementById('main-screen').addEventListener('click', (e) => {
+    // Event Delegation
+    document.getElementById('main-container').addEventListener('click', (e) => {
         const target = e.target;
 
-        // 드롭다운 메뉴
+        // Dropdown Menu Toggle
         const menuBtn = target.closest('.toggle-menu');
         if (menuBtn) {
             e.preventDefault();
@@ -1255,7 +1068,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             document.querySelectorAll('.dropdown-content.show').forEach(d => d.classList.remove('show'));
         }
 
-        // 삭제 버튼
+        // Remove Button
         if (target.closest('.remove-btn')) {
             e.preventDefault();
             let elementToRemove;
@@ -1284,7 +1097,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             return;
         }
 
-        // 코멘트 토글
+        // Toggle Comment Sections
         const toggleBtn = target.closest('.toggle-comment, .toggle-channel-comment');
         if (toggleBtn) {
             e.preventDefault();
@@ -1299,7 +1112,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             return;
         }
 
-        // 성과 항목 추가
+        // Add Performance Item
         if (target.closest('.add-performance-btn')) {
             e.preventDefault();
             const container = target.closest('.core-performance-container');
@@ -1312,18 +1125,20 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             return;
         }
 
-        // 담당자 추가
+        // Add Member
         if (target.closest('.add-member-btn')) {
             e.preventDefault();
             const channelCard = target.closest('.card[data-channel-id]');
             const channelId = channelCard.dataset.channelId;
             const channel = appData.channels.find(c => c['채널ID'] === channelId);
             const teamId = channel ? channel['소속팀ID'] : null;
+            
+            // 모달 열기
             openAddMemberModal(channelId, teamId);
             return;
         }
 
-        // 채널 추가
+        // Add Channel
         if (target.closest('.add-channel-btn')) {
             const teamCard = target.closest('.card[data-team-id]');
             const teamId = teamCard ? teamCard.dataset.teamId : (selectedTeamId || currentUser.소속팀ID.split(',')[0].trim());
@@ -1347,6 +1162,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                         }
                     })
                     .withFailureHandler(error => {
+                        console.error('Failed to add channel:', error);
                         showError('채널 추가 중 오류가 발생했습니다.');
                         hideLoading();
                     })
@@ -1355,7 +1171,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             return;
         }
 
-        // 팀 추가
+        // Add Team
         if (target.closest('.add-team-btn')) {
             const teamName = prompt('새 팀 이름을 입력하세요:');
             
@@ -1377,6 +1193,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                         }
                     })
                     .withFailureHandler(error => {
+                        console.error('Failed to add team:', error);
                         showError('팀 추가 중 오류가 발생했습니다.');
                         hideLoading();
                     })
@@ -1385,7 +1202,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             return;
         }
 
-        // 시스템 관리자 추가
+        // Add Admin (시스템 관리자 추가)
         if (target.closest('.add-admin-btn')) {
             e.preventDefault();
             openAddAdminModal();
@@ -1393,13 +1210,16 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         }
     });
 
-    // footer 버튼 이벤트
+    // footer 버튼 이벤트 위임 추가
     document.getElementById('action-footer').addEventListener('click', (e) => {
         const target = e.target;
         
+        // Save/Submit Buttons
         if (target.closest('.save-draft-btn, .submit-evaluation-btn')) {
             e.preventDefault();
+            console.log('저장 버튼 클릭됨');
             const isDraft = target.closest('.save-draft-btn') !== null;
+            console.log('임시저장:', isDraft);
             collectAndSaveData(isDraft);
             return;
         }
@@ -1488,7 +1308,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     let totalContribution = 0;
                     const memberRows = card.querySelectorAll('tr[data-member-name]');
                     memberRows.forEach(row => {
-                        const cell = row.cells[2];
+                        const cell = row.cells[2]; // 2차 기여도
                         if(cell) {
                             const text = cell.textContent.replace('%', '');
                             totalContribution += parseFloat(text) || 0;
@@ -1496,7 +1316,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     });
 
                     memberRows.forEach(row => {
-                        const contributionCell = row.cells[2];
+                        const contributionCell = row.cells[2]; // 2차 기여도
                         if(contributionCell) {
                             const contributionText = contributionCell.textContent.replace('%', '');
                             const contribution = parseFloat(contributionText) || 0;
@@ -1515,7 +1335,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     calculate();
                 }
             });
-            calculate();
+            calculate(); // Initial calculation
         });
     }
 
@@ -1527,6 +1347,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             const channelId = channelCard.dataset.channelId;
             const channelComment = channelCard.querySelector('.channel-comment')?.value || '';
             
+            // 최종관리자 화면의 채널별 예산 정보
             let channelBudget = {};
             if (currentRole === 'finalApprover') {
                 channelBudget = {
@@ -1540,6 +1361,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                 const memberId = memberRow.dataset.memberId;
                 const memberName = memberRow.dataset.memberName;
                 
+                // 기존 평가 데이터 찾기
                 let evalData = appData.evaluations.find(e => 
                     e['채널ID'] === channelId && 
                     e['담당자ID'] === memberId && 
@@ -1547,21 +1369,25 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                 );
                 
                 if (!evalData) {
+                    // 새 평가 데이터 생성
                     evalData = {
-                        평가ID: null,
+                        평가ID: null, // 서버에서 자동 생성됨
                         평가월: currentMonth,
                         채널ID: channelId,
                         담당자ID: memberId,
                         담당자이름: memberName
                     };
                 } else {
+                    // 기존 데이터 복사
                     evalData = { ...evalData };
                 }
                 
+                // 역할별로 다른 데이터 수집
                 if (currentRole === 'teamLead') {
                     evalData['투입MM'] = parseFloat(memberRow.querySelector('.mm-input')?.value) || 0;
                     evalData['1차기여도'] = parseFloat(memberRow.querySelector('.perc-input')?.value) || 0;
                     
+                    // 성과 항목 수집
                     const commentRow = memberRow.nextElementSibling;
                     if (commentRow) {
                         const performances = [];
@@ -1572,7 +1398,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                                 performances.push(`${title}|${value}`);
                             }
                         });
-                        evalData['1차성과내용'] = performances.join('||');
+                        evalData['1차성과금'] = performances.join('||');
                         evalData['1차코멘트'] = commentRow.querySelector('.comment-1')?.value || '';
                     }
                     evalData['1차평가상태'] = isDraft ? '임시저장' : '제출완료';
@@ -1598,21 +1424,36 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                 }
                 
                 evalData['채널코멘트'] = channelComment;
-                evalData['담당자이름'] = memberName;
+                evalData['담당자이름'] = memberName; // 담당자 이름 확실히 저장
                 evaluations.push(evalData);
             });
         });
         
         if (evaluations.length > 0) {
+            console.log('저장할 평가 데이터:', evaluations);
             saveEvaluationData(evaluations, isDraft);
         } else {
             showError('저장할 데이터가 없습니다.');
         }
     }
+    
+    // 간단한 평가ID 생성 (EVAL-YYYYMM-001 형식)
+    function generateSimpleEvaluationId(evaluationMonth, counter) {
+        const monthMatch = evaluationMonth.match(/(\d{4})년\s*(\d{1,2})월/);
+        const yyyymm = monthMatch ? 
+            monthMatch[1] + monthMatch[2].padStart(2, '0') : 
+            new Date().getFullYear() + (new Date().getMonth() + 1).toString().padStart(2, '0');
+        
+        return `EVAL-${yyyymm}-${counter.toString().padStart(3, '0')}`;
+    }
 
     // 역할 전환
     function switchView(role) {
-        if (!currentUser) return;
+        // currentUser가 없으면 리턴
+        if (!currentUser) {
+            console.error('사용자 정보가 없습니다.');
+            return;
+        }
         
         const roleMap = {
             'teamLead': '팀장',
@@ -1626,6 +1467,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             'finalApprover': '3차'
         };
         
+        // 권한 체크
         if (!currentUser.평가권한 || !currentUser.평가권한.includes(permissionMap[role])) {
             showError(`${roleMap[role]} 평가 권한이 없습니다.`);
             return;
@@ -1633,10 +1475,20 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         
         currentRole = role;
         
+        // views가 제대로 초기화되었는지 확인
+        if (!views || !views[role]) {
+            console.error('View not found:', role);
+            return;
+        }
+        
+        // 모든 뷰 숨기기
         Object.values(views).forEach(view => { 
-            if (view) view.classList.add('hidden'); 
+            if (view) {
+                view.classList.add('hidden'); 
+            }
         });
         
+        // 버튼 스타일 업데이트
         Object.values(buttons).forEach(btn => { 
             if (btn) {
                 btn.classList.remove('btn-primary'); 
@@ -1647,25 +1499,30 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         buttons[role].classList.remove('btn-secondary');
         buttons[role].classList.add('btn-primary');
         
-        document.getElementById('user-info').textContent = `${currentUser.이름}님 (${roleMap[role]})`;
+        // userInfoEl 확인 후 업데이트
+        const userInfo = document.getElementById('user-info');
+        if (userInfo) {
+            userInfo.textContent = `${currentUser.이름}님 (${roleMap[role]})`;
+        }
         
+        // 데이터 로드 - 한글 역할명 전달
         loadData(roleMap[role]);
     }
-
+    
     // DOM 로드 완료 후 초기화
     window.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM 로드 완료');
+        
+        // DOM 요소 초기화
         initializeDOMReferences();
         
-        // 세션 확인 - 로그인 상태 유지
-        checkUserSession();
+        // 요소들이 제대로 로드되었는지 확인
+        if (!buttons.teamLead || !buttons.manager || !buttons.finalApprover || !monthSelect) {
+            console.error('필수 DOM 요소를 찾을 수 없습니다.');
+            return;
+        }
         
-        // 로그인 폼 이벤트
-        document.getElementById('login-form').addEventListener('submit', handleLogin);
-        
-        // 로그아웃 버튼 이벤트
-        document.getElementById('logout-btn').addEventListener('click', handleLogout);
-        
-        // 역할 전환 버튼 이벤트
+        // 이벤트 리스너 등록
         buttons.teamLead.addEventListener('click', () => {
             if (currentUser && !buttons.teamLead.disabled) switchView('teamLead');
         });
@@ -1676,8 +1533,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
             if (currentUser && !buttons.finalApprover.disabled) switchView('finalApprover');
         });
         
-        // 월 선택 이벤트
-        document.getElementById('evaluation-month-select').addEventListener('change', (e) => {
+        monthSelect.addEventListener('change', (e) => {
             currentMonth = e.target.value;
             if (currentMonth && currentRole && currentUser) {
                 const roleMap = {
@@ -1685,25 +1541,30 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     'manager': '관리자',
                     'finalApprover': '최종관리자'
                 };
-                loadData(roleMap[currentRole]);
+                loadData(roleMap[currentRole]); // currentRole은 영문이므로 한글로 변환
             }
         });
         
-        // 팀 선택 이벤트
-        document.getElementById('team-select').addEventListener('change', (e) => {
-            selectedTeamId = e.target.value;
-            if (selectedTeamId && currentRole === 'teamLead') {
-                loadData('팀장');
-            }
-        });
+        // 팀 선택 이벤트 리스너
+        if (teamSelect) {
+            teamSelect.addEventListener('change', (e) => {
+                selectedTeamId = e.target.value;
+                if (selectedTeamId && currentRole === 'teamLead') {
+                    loadData('팀장');
+                }
+            });
+        }
         
-        // Undo 버튼 이벤트
-        document.getElementById('undo-btn').addEventListener('click', () => {
-            if (undoState.element) {
-                undoState.element.style.display = '';
-                hideUndoToast();
-            }
-        });
+        // Undo 버튼 이벤트 리스너
+        const undoBtn = document.getElementById('undo-btn');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () => {
+                if (undoState.element) {
+                    undoState.element.style.display = '';
+                    hideUndoToast();
+                }
+            });
+        }
         
         // 모달 닫기 버튼
         document.querySelector('.close').addEventListener('click', closeAddMemberModal);
@@ -1732,59 +1593,69 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
         document.getElementById('addMemberForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
+            // USER001 형식의 ID 생성
+            const timestamp = Date.now();
+            const randomNum = Math.floor(Math.random() * 1000);
+            const userId = `USER${timestamp}${randomNum}`.substring(0, 10);
+            
             const userData = {
+                userId: userId,
                 name: document.getElementById('newMemberName').value,
                 role: document.getElementById('newMemberRole').value,
-                teamId: pendingMemberData.teamId
+                teamId: pendingMemberData.teamId,
+                isAdmin: false // 담당자는 관리자가 아님
             };
             
-            // 로딩 표시 대신 버튼만 비활성화
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.disabled = true;
-            submitBtn.textContent = '추가 중...';
-            
+            showLoading();
             google.script.run
                 .withSuccessHandler(result => {
                     if (result.success) {
                         showSuccess('담당자가 추가되었습니다.');
                         closeAddMemberModal();
                         
-                        // 화면에 즉시 추가 (데이터 리로드 없이)
+                        // 화면에 즉시 추가
                         const channelCard = document.querySelector(`[data-channel-id="${pendingMemberData.channelId}"]`);
-                        if (channelCard && result.member) {
-                            // appData에 추가
-                            appData.members.push(result.member);
+                        if (channelCard) {
+                            const newUser = {
+                                사용자ID: result.userId || userData.userId,
+                                이름: userData.name,
+                                역할: userData.role,
+                                소속팀ID: userData.teamId
+                            };
                             
-                            // 화면에 바로 렌더링
-                            addMemberToChannel(channelCard, result.member, pendingMemberData.channelId);
+                            // appData에도 추가
+                            appData.users.push(newUser);
+                            
+                            // 화면에 추가
+                            addMemberToChannel(channelCard, newUser, pendingMemberData.channelId);
                         }
                     } else {
                         showError(result.message);
                     }
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '추가';
+                    hideLoading();
                 })
                 .withFailureHandler(error => {
+                    console.error('Failed to add user:', error);
                     showError('담당자 추가 중 오류가 발생했습니다.');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '추가';
+                    hideLoading();
                 })
-                .addMember(userData);  // addUser 대신 addMember 호출
+                .addUser(userData);
         });
 
         // 시스템 관리자 추가 폼 제출
         document.getElementById('addAdminForm').addEventListener('submit', (e) => {
             e.preventDefault();
             
+            // 선택된 팀들 가져오기
             const teamSelect = document.getElementById('adminTeam');
             const selectedTeams = Array.from(teamSelect.selectedOptions).map(opt => opt.value);
             
             const adminData = {
-                userId: document.getElementById('adminEmail').value,
+                userId: document.getElementById('adminEmail').value, // 시스템 관리자는 이메일을 ID로 사용
                 name: document.getElementById('adminName').value,
-                password: document.getElementById('adminPassword').value,
                 role: document.getElementById('adminRole').value,
-                teamId: selectedTeams.join(','),
+                teamId: selectedTeams.join(','), // 복수 팀은 쉼표로 구분
+                isAdmin: true, // 시스템 관리자
                 permissions: {
                     perm1: document.getElementById('adminPerm1').checked,
                     perm2: document.getElementById('adminPerm2').checked,
@@ -1798,6 +1669,7 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     if (result.success) {
                         showSuccess('시스템 관리자가 추가되었습니다.');
                         closeAddAdminModal();
+                        // 데이터 리프레시
                         const roleMap = {
                             'teamLead': '팀장',
                             'manager': '관리자',
@@ -1810,11 +1682,55 @@ document.querySelector('a[href="#"]').addEventListener('click', (e) => {
                     hideLoading();
                 })
                 .withFailureHandler(error => {
+                    console.error('Failed to add admin:', error);
                     showError('시스템 관리자 추가 중 오류가 발생했습니다.');
                     hideLoading();
                 })
                 .addUser(adminData);
         });
+        
+        window.debugApp = function() {
+            console.log('=== 디버그 정보 ===');
+            console.log('로딩 화면:', document.getElementById('loading'));
+            console.log('로딩 화면 숨김 여부:', document.getElementById('loading').classList.contains('hidden'));
+            console.log('팀장 뷰:', document.getElementById('team-lead-view'));
+            console.log('팀장 뷰 숨김 여부:', document.getElementById('team-lead-view').classList.contains('hidden'));
+            console.log('팀장 뷰 내용 길이:', document.getElementById('team-lead-view').innerHTML.length);
+            console.log('currentUser:', currentUser);
+            console.log('currentRole:', currentRole);
+            console.log('appData:', appData);
+            console.log('views:', views);
+            
+            // 강제로 로딩 숨기고 뷰 표시
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('team-lead-view').classList.remove('hidden');
+            console.log('강제로 로딩을 숨기고 팀장 뷰를 표시했습니다.');
+        };
+        
+        window.forceRender = function() {
+            console.log('강제 렌더링 시작...');
+            hideLoading();
+            renderView('teamLead');
+        };
+        
+        // 디버그용 함수들
+        window.debugSave = function() {
+            console.log('디버그 저장 테스트');
+            collectAndSaveData(true);
+        };
+        
+        window.testMultiTeam = function() {
+            console.log('복수 팀 소속 테스트');
+            currentUser.소속팀ID = 'T01,T02,T03';
+            currentUser.소속팀목록 = ['T01', 'T02', 'T03'];
+            setupTeamSelector();
+            updateTeamSelector();
+        };
+        
+        console.log('디버그 함수를 사용할 수 있습니다: debugApp(), forceRender(), debugSave(), testMultiTeam()');
+        
+        // 초기화 시작
+        initializeApp();
     });
     </script>
 </body>
