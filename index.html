@@ -301,7 +301,8 @@
         teams: [],
         channels: [],
         evaluations: [],
-        users: [],
+        users: [],      // 관리자들
+        members: [],    // 담당자들
         progress: []
     };
 
@@ -361,6 +362,26 @@
         setTimeout(() => successDiv.remove(), 3000);
     }
 
+    // 세션 확인
+    function checkUserSession() {
+        google.script.run
+            .withSuccessHandler(result => {
+                if (result.success) {
+                    currentUser = result.user;
+                    document.getElementById('login-screen').classList.add('hidden');
+                    document.getElementById('main-screen').classList.remove('hidden');
+                    document.getElementById('action-footer').classList.remove('hidden');
+                    initializeApp();
+                }
+                // 세션이 없으면 로그인 화면 유지
+            })
+            .withFailureHandler(error => {
+                console.log('세션 확인 실패:', error);
+                // 로그인 화면 유지
+            })
+            .checkSession();
+    }
+
     // 로그인 처리
     function handleLogin(e) {
         e.preventDefault();
@@ -391,14 +412,21 @@
     // 로그아웃 처리
     function handleLogout(e) {
         e.preventDefault();
-        currentUser = null;
-        currentRole = null;
-        currentMonth = null;
-        selectedTeamId = null;
-        document.getElementById('login-screen').classList.remove('hidden');
-        document.getElementById('main-screen').classList.add('hidden');
-        document.getElementById('action-footer').classList.add('hidden');
-        document.getElementById('login-form').reset();
+        google.script.run
+            .withSuccessHandler(() => {
+                currentUser = null;
+                currentRole = null;
+                currentMonth = null;
+                selectedTeamId = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('main-screen').classList.add('hidden');
+                document.getElementById('action-footer').classList.add('hidden');
+                document.getElementById('login-form').reset();
+            })
+            .withFailureHandler(error => {
+                console.error('로그아웃 오류:', error);
+            })
+            .logout();
     }
 
     // 모달 관련 함수
@@ -436,7 +464,8 @@
         const memberList = channelCard.querySelector('.member-list');
         if (!memberList) return;
         
-        const existingMember = memberList.querySelector(`tr[data-member-id="${memberData.사용자ID}"]`);
+        const memberId = memberData['담당자ID'] || memberData['사용자ID'];
+        const existingMember = memberList.querySelector(`tr[data-member-id="${memberId}"]`);
         if (existingMember) return;
         
         const newMemberHTML = createMemberRowHTML(memberData, channelId, currentRole, {});
@@ -1445,6 +1474,9 @@
     window.addEventListener('DOMContentLoaded', function() {
         initializeDOMReferences();
         
+        // 세션 확인 - 로그인 상태 유지
+        checkUserSession();
+        
         // 로그인 폼 이벤트
         document.getElementById('login-form').addEventListener('submit', handleLogin);
         
@@ -1521,39 +1553,41 @@
             const userData = {
                 name: document.getElementById('newMemberName').value,
                 role: document.getElementById('newMemberRole').value,
-                teamId: pendingMemberData.teamId,
-                isAdmin: false
+                teamId: pendingMemberData.teamId
             };
             
-            showLoading();
+            // 로딩 표시 대신 버튼만 비활성화
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '추가 중...';
+            
             google.script.run
                 .withSuccessHandler(result => {
                     if (result.success) {
                         showSuccess('담당자가 추가되었습니다.');
                         closeAddMemberModal();
                         
+                        // 화면에 즉시 추가 (데이터 리로드 없이)
                         const channelCard = document.querySelector(`[data-channel-id="${pendingMemberData.channelId}"]`);
-                        if (channelCard) {
-                            const newUser = {
-                                사용자ID: result.userId,
-                                이름: userData.name,
-                                역할: userData.role,
-                                소속팀ID: userData.teamId
-                            };
+                        if (channelCard && result.member) {
+                            // appData에 추가
+                            appData.members.push(result.member);
                             
-                            appData.users.push(newUser);
-                            addMemberToChannel(channelCard, newUser, pendingMemberData.channelId);
+                            // 화면에 바로 렌더링
+                            addMemberToChannel(channelCard, result.member, pendingMemberData.channelId);
                         }
                     } else {
                         showError(result.message);
                     }
-                    hideLoading();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '추가';
                 })
                 .withFailureHandler(error => {
                     showError('담당자 추가 중 오류가 발생했습니다.');
-                    hideLoading();
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '추가';
                 })
-                .addUser(userData);
+                .addMember(userData);  // addUser 대신 addMember 호출
         });
 
         // 시스템 관리자 추가 폼 제출
@@ -1569,7 +1603,6 @@
                 password: document.getElementById('adminPassword').value,
                 role: document.getElementById('adminRole').value,
                 teamId: selectedTeams.join(','),
-                isAdmin: true,
                 permissions: {
                     perm1: document.getElementById('adminPerm1').checked,
                     perm2: document.getElementById('adminPerm2').checked,
