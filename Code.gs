@@ -1031,3 +1031,243 @@ function migrateOldData() {
   
   return '데이터 마이그레이션 완료!';
 }
+
+// ============ 로그인 관련 함수들 ============
+// Code.gs의 맨 아래에 이 함수들을 추가하세요
+
+// 로그인 처리
+function login(email, password) {
+  try {
+    console.log('로그인 시도:', email);
+    
+    const users = getSheetData(SHEETS.users);
+    console.log('전체 사용자 수:', users.length);
+    
+    // 이메일 또는 사용자ID로 찾기
+    const user = users.find(u => 
+      (u['이메일'] === email || u['사용자ID'] === email) && 
+      u['비밀번호'] === password && 
+      u['활성상태'] !== 'N'
+    );
+    
+    if (user) {
+      console.log('로그인 성공:', user['이름']);
+      
+      // 권한 정보 추가
+      user['평가권한'] = [];
+      if (user['1차평가권한'] === 'Y') user['평가권한'].push('1차');
+      if (user['2차평가권한'] === 'Y') user['평가권한'].push('2차');
+      if (user['3차평가권한'] === 'Y') user['평가권한'].push('3차');
+      
+      // 복수 팀 소속 처리
+      if (user['소속팀ID'] && user['소속팀ID'].includes(',')) {
+        user['소속팀목록'] = user['소속팀ID'].split(',').map(t => t.trim());
+      } else {
+        user['소속팀목록'] = user['소속팀ID'] ? [user['소속팀ID']] : [];
+      }
+      
+      // 세션에 사용자 정보 저장
+      const userProperties = PropertiesService.getUserProperties();
+      userProperties.setProperty('currentUser', JSON.stringify({
+        사용자ID: user['사용자ID'],
+        이메일: user['이메일'],
+        이름: user['이름'],
+        역할: user['역할'],
+        평가권한: user['평가권한'],
+        소속팀목록: user['소속팀목록']
+      }));
+      
+      return {
+        success: true,
+        user: user
+      };
+    } else {
+      console.log('로그인 실패: 사용자를 찾을 수 없음');
+      return {
+        success: false,
+        message: '이메일 또는 비밀번호가 일치하지 않습니다.'
+      };
+    }
+  } catch (error) {
+    console.error('로그인 오류:', error);
+    return {
+      success: false,
+      message: '로그인 처리 중 오류가 발생했습니다: ' + error.toString()
+    };
+  }
+}
+
+// 세션 확인
+function checkSession() {
+  try {
+    const userProperties = PropertiesService.getUserProperties();
+    const currentUserStr = userProperties.getProperty('currentUser');
+    
+    if (currentUserStr) {
+      const currentUser = JSON.parse(currentUserStr);
+      console.log('세션 사용자:', currentUser.이름);
+      
+      // 전체 사용자 정보 다시 로드
+      const users = getSheetData(SHEETS.users);
+      const user = users.find(u => 
+        u['사용자ID'] === currentUser.사용자ID || 
+        u['이메일'] === currentUser.이메일
+      );
+      
+      if (user && user['활성상태'] !== 'N') {
+        // 권한 정보 재설정
+        user['평가권한'] = currentUser.평가권한;
+        user['소속팀목록'] = currentUser.소속팀목록;
+        
+        return {
+          success: true,
+          user: user
+        };
+      }
+    }
+    
+    return {
+      success: false
+    };
+  } catch (error) {
+    console.error('세션 확인 오류:', error);
+    return {
+      success: false
+    };
+  }
+}
+
+// 로그아웃
+function logout() {
+  try {
+    const userProperties = PropertiesService.getUserProperties();
+    userProperties.deleteProperty('currentUser');
+    return { success: true };
+  } catch (error) {
+    console.error('로그아웃 오류:', error);
+    return { success: false };
+  }
+}
+
+// 샘플 사용자 생성 (테스트용)
+function createSampleUsers() {
+  const spreadsheet = getSpreadsheet();
+  const sheet = spreadsheet.getSheetByName(SHEETS.users);
+  
+  if (!sheet) {
+    console.error('사용자 시트를 찾을 수 없습니다.');
+    return '사용자 시트가 없습니다.';
+  }
+  
+  // 헤더가 없으면 생성
+  if (sheet.getLastRow() === 0) {
+    const headers = ['사용자ID', '이메일', '이름', '비밀번호', '역할', '소속팀ID', 
+                     '1차평가권한', '2차평가권한', '3차평가권한', '활성상태', '생성일시'];
+    sheet.appendRow(headers);
+  }
+  
+  // 관리자 계정 추가
+  const sampleUsers = [
+    ['admin@company.com', 'admin@company.com', '김관리자', 'admin123', 
+     '최종관리자', 'T01,T02,T03', 'Y', 'Y', 'Y', 'Y', new Date()],
+    ['team1@company.com', 'team1@company.com', '이팀장', 'team123', 
+     '팀장', 'T01', 'Y', 'N', 'N', 'Y', new Date()],
+    ['manager@company.com', 'manager@company.com', '박매니저', 'manager123', 
+     '관리자', 'T01,T02', 'N', 'Y', 'N', 'Y', new Date()]
+  ];
+  
+  sampleUsers.forEach(user => {
+    sheet.appendRow(user);
+  });
+  
+  return '샘플 사용자가 생성되었습니다.';
+}
+
+// 사용자 시트 확인 및 수정
+function checkAndFixUserSheet() {
+  const spreadsheet = getSpreadsheet();
+  const sheet = spreadsheet.getSheetByName(SHEETS.users);
+  
+  if (!sheet) {
+    // 시트가 없으면 생성
+    const newSheet = spreadsheet.insertSheet(SHEETS.users);
+    const headers = ['사용자ID', '이메일', '이름', '비밀번호', '역할', '소속팀ID', 
+                     '1차평가권한', '2차평가권한', '3차평가권한', '활성상태', '생성일시'];
+    newSheet.appendRow(headers);
+    console.log('사용자 시트 생성 완료');
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  console.log('사용자 시트 데이터:', data.length + '행');
+  
+  // 첫 번째 행(헤더) 확인
+  if (data.length > 0) {
+    const headers = data[0];
+    console.log('현재 헤더:', headers);
+    
+    // 필수 컬럼 확인
+    const requiredColumns = ['사용자ID', '이메일', '이름', '비밀번호'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    
+    if (missingColumns.length > 0) {
+      console.error('누락된 컬럼:', missingColumns);
+      return '필수 컬럼이 누락되었습니다: ' + missingColumns.join(', ');
+    }
+  }
+  
+  // 로그인 가능한 사용자 확인
+  let validUsers = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][1] && data[i][3]) { // 이메일과 비밀번호가 있는 경우
+      validUsers++;
+    }
+  }
+  
+  console.log('로그인 가능한 사용자 수:', validUsers);
+  
+  if (validUsers === 0) {
+    console.log('로그인 가능한 사용자가 없습니다. 샘플 사용자를 생성합니다.');
+    createSampleUsers();
+  }
+  
+  return '사용자 시트 확인 완료';
+}
+
+// 1. 현재 상태 확인
+function quickTest() {
+  console.log('=== 시트 확인 ===');
+  const result = testConnection();
+  console.log(result);
+  
+  console.log('\n=== 사용자 시트 확인 ===');
+  checkAndFixUserSheet();
+  
+  console.log('\n=== 로그인 테스트 ===');
+  const loginResult = login('admin@company.com', 'admin123');
+  console.log('로그인 결과:', loginResult);
+  
+  return '테스트 완료';
+}
+
+// 2. 샘플 데이터 생성
+function setupTestData() {
+  // 사용자 생성
+  createSampleUsers();
+  
+  // 팀 데이터 확인
+  const teamSheet = getSpreadsheet().getSheetByName(SHEETS.teams);
+  if (!teamSheet || teamSheet.getLastRow() <= 1) {
+    teamSheet.appendRow(['T01', '콘텐츠1팀', 'team1@company.com', 'Y']);
+    teamSheet.appendRow(['T02', '콘텐츠2팀', '', 'Y']);
+    teamSheet.appendRow(['T03', '콘텐츠3팀', '', 'Y']);
+  }
+  
+  // 채널 데이터 확인
+  const channelSheet = getSpreadsheet().getSheetByName(SHEETS.channels);
+  if (!channelSheet || channelSheet.getLastRow() <= 1) {
+    channelSheet.appendRow(['CH001', '메인채널', 'T01', 'Y']);
+    channelSheet.appendRow(['CH002', '서브채널', 'T01', 'Y']);
+  }
+  
+  return '테스트 데이터 생성 완료';
+}
